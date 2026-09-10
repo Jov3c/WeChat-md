@@ -2,7 +2,7 @@
 
 本地优先的微信公众号 Markdown 编辑、排版、风格提取与发布辅助工具。
 
-> 当前仓库尚未开始功能开发。
+当前已完成第一阶段 UI 组件库与四栏编辑器框架。
 
 ## 产品方向
 
@@ -14,6 +14,26 @@
 - Windows 本地文章、图片和版本管理
 
 计划采用 React、TypeScript、Vite 与 Tauri 2 构建，桌面端使用 SQLite，Web 端使用 IndexedDB。
+
+## 本地运行
+
+需要 Node.js 24 或更高版本。
+
+```bash
+npm install
+npm run dev
+```
+
+- 编辑器框架：`http://localhost:5173/`
+- UI 组件库：`http://localhost:5173/?view=components`
+
+测试与构建：
+
+```bash
+npm run test:run
+npm run typecheck
+npm run build
+```
 
 ## 参考项目
 

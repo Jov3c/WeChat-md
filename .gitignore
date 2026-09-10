@@ -15,6 +15,7 @@ src-tauri/target/
 .idea/
 .vscode/
 .worktrees/
+.playwright-cli/
 .DS_Store
 Thumbs.db
 

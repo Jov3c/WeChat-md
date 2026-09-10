@@ -13,3 +13,11 @@
   .workspace { grid-template-columns: 72px minmax(390px, 1fr) minmax(420px, 1fr) 280px; }
   .workspace > :first-child { overflow: hidden; }
 }
+
+@media (max-width: 1179px) {
+  .workspace { grid-template-columns: 64px minmax(280px, 0.9fr) minmax(340px, 1.1fr) 250px; }
+}
+
+@media (max-width: 959px) {
+  .workspace { grid-template-columns: 58px minmax(270px, 0.9fr) minmax(330px, 1.1fr) 230px; }
+}

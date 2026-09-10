@@ -112,3 +112,14 @@
 .toolbar :global(svg) {
   flex: none;
 }
+
+@media (max-width: 1179px) {
+  .toolbar { padding-inline: 12px; }
+  .toolbarGroup { gap: 8px; }
+  .toolbarGroup:first-child > :nth-child(4),
+  .toolbarGroup:first-child > :nth-child(5),
+  .toolbarGroup:first-child > :nth-child(6),
+  .toolbarGroup:last-child > :first-child { display: none; }
+  .newButton { min-width: 128px; }
+  .copyButton { min-width: 150px; }
+}

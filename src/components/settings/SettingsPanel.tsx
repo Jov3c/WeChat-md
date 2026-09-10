@@ -1,4 +1,4 @@
-import { ChevronRight, Code2, Image, Link2, List, Minus, PanelTop, Quote, Settings2, Table2, Type } from 'lucide-react'
+import { ChevronRight, Code2, Image, Link2, List, Minus, PanelTop, PlusCircle, Quote, Settings2, Table2, Type } from 'lucide-react'
 import { Card, Input, Slider, Tabs } from '../ui'
 import styles from './SettingsPanel.module.css'
 
@@ -15,6 +15,7 @@ const settings = [
   { label: '代码样式', icon: Code2 }, { label: '列表样式', icon: List },
   { label: '表格样式', icon: Table2 }, { label: '图片样式', icon: Image },
   { label: '分割线样式', icon: Minus }, { label: '链接样式', icon: Link2 },
+  { label: '其他样式', icon: PlusCircle },
 ]
 
 export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange }: SettingsPanelProps) {
@@ -27,7 +28,7 @@ export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange }
         <div className={styles.content}>
           <section>
             <h3>当前风格</h3>
-            <Card selected className={styles.styleCard}>
+            <Card className={styles.styleCard}>
               <span className={styles.stylePreview}><i /><i /><i /></span>
               <span><strong>默认 · 简洁</strong><small>清爽、专注的公众号风格</small></span>
               <button type="button">更换风格</button>
@@ -44,6 +45,8 @@ export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange }
             <div className={styles.controlRow}><span>字体</span><button className={styles.selectLike} type="button">系统字体 <ChevronRight size={13} /></button></div>
             <div className={styles.controlRow}><span>字号</span><Input aria-label="字号" value="16" readOnly /><em>px</em></div>
             <div className={styles.controlRow}><span>行高</span><Input aria-label="行高" value="1.8" readOnly /></div>
+            <div className={styles.controlRow}><span>段间距</span><Input aria-label="段间距" value="16" readOnly /><em>px</em></div>
+            <div className={styles.controlRow}><span>主题色</span><button className={styles.colorValue} type="button"><i />#D8C9C1</button></div>
           </section>
         </div>
       ) : (
