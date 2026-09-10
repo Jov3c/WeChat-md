@@ -1,0 +1,114 @@
+.titleBar {
+  display: flex;
+  height: var(--titlebar-height);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px 0 20px;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(250, 248, 246, 0.94);
+  user-select: none;
+}
+
+.brand,
+.brandText,
+.windowControls,
+.toolbar,
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 11px;
+}
+
+.brandMark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #e2baaa, #c98472);
+  transform: rotate(-10deg);
+}
+
+.brandMark::after {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  content: '';
+  transform: rotate(34deg);
+}
+
+.brandText {
+  gap: 16px;
+}
+
+.productName {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.tagline {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.windowControls {
+  gap: 2px;
+}
+
+.windowButton {
+  display: inline-flex;
+  width: 34px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.windowButton:hover {
+  background: var(--bg-hover);
+}
+
+.windowButton:last-child:hover {
+  background: #f5ded9;
+  color: #a64b3f;
+}
+
+.toolbar {
+  height: var(--toolbar-height);
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.toolbarGroup {
+  gap: 11px;
+}
+
+.newButton {
+  min-width: 142px;
+}
+
+.copyButton {
+  min-width: 168px;
+}
+
+.buttonChevron {
+  margin-left: 2px;
+  color: var(--text-secondary);
+}
+
+.toolbar :global(svg) {
+  flex: none;
+}

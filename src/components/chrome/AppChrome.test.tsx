@@ -1,0 +1,43 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { TitleBar } from './TitleBar'
+import { Toolbar } from './Toolbar'
+
+describe('application chrome', () => {
+  it('shows product identity and accessible window controls', () => {
+    render(<TitleBar />)
+
+    expect(screen.getByText('WeChat MD Editor')).toBeVisible()
+    expect(screen.getByText('专注于更好的公众号写作体验')).toBeVisible()
+    expect(screen.getByRole('button', { name: '最小化窗口' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '最大化窗口' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '关闭窗口' })).toBeVisible()
+  })
+
+  it('connects primary toolbar actions to application callbacks', async () => {
+    const onNewArticle = vi.fn()
+    const onImport = vi.fn()
+    const onExtract = vi.fn()
+    const onCopy = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <Toolbar
+        onNewArticle={onNewArticle}
+        onImport={onImport}
+        onExtract={onExtract}
+        onCopy={onCopy}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '新建文章' }))
+    await user.click(screen.getByRole('button', { name: '导入 MD' }))
+    await user.click(screen.getByRole('button', { name: '提取公众号' }))
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+
+    expect(onNewArticle).toHaveBeenCalledOnce()
+    expect(onImport).toHaveBeenCalledOnce()
+    expect(onExtract).toHaveBeenCalledOnce()
+    expect(onCopy).toHaveBeenCalledOnce()
+  })
+})
