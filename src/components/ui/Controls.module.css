@@ -220,3 +220,13 @@
   border-color: var(--accent-soft);
   background: var(--bg-selected);
 }
+
+@media (max-height: 1000px) {
+  .iconButton { width: 30px; height: 30px; }
+  .input { height: 30px; padding-inline: 10px; font-size: 11px; }
+  .input[data-has-icon='true'] { padding-left: 29px; }
+  .inputIcon { left: 9px; }
+  .tabsList { gap: 15px; }
+  .tab { font-size: 11px; }
+  .badge { min-height: 19px; padding-inline: 6px; font-size: 10px; }
+}

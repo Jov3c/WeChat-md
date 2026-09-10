@@ -31,7 +31,7 @@ export function Sidebar({ articles, selectedId, onSelect }: SidebarProps) {
         ))}
       </div>
       <div className={styles.sectionLabel}>文章列表</div>
-      <div className={styles.articleArea}>
+      <div className={styles.articleArea} role="region" aria-label="可滚动文章列表">
         <ScrollArea>
           <div className={styles.articleList}>
             {articles.map((article) => (

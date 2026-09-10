@@ -63,3 +63,8 @@
   background: transparent;
   color: var(--text-body);
 }
+
+@media (max-height: 1000px) {
+  .button { height: 31px; gap: 6px; padding-inline: 13px; font-size: 11px; }
+  .button[data-size='sm'] { height: 27px; padding-inline: 10px; font-size: 10px; }
+}

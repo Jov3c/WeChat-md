@@ -25,7 +25,7 @@ export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange }
         <Tabs ariaLabel="设置区域" items={[{ value: 'layout', label: '排版设置' }, { value: 'components', label: '组件' }]} value={tab} onValueChange={onTabChange} />
       </header>
       {tab === 'layout' ? (
-        <div className={styles.content}>
+        <div className={styles.content} role="region" aria-label="可滚动排版设置内容">
           <section>
             <h3>当前风格</h3>
             <Card className={styles.styleCard}>
@@ -50,7 +50,7 @@ export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange }
           </section>
         </div>
       ) : (
-        <div className={styles.componentContent}>
+        <div className={styles.componentContent} role="region" aria-label="可滚动排版设置内容">
           <h3>组件样式</h3>
           <p>为文章中的独立内容块选择样式。</p>
           {['信息卡片', '步骤列表', '重点提示', '图片说明'].map((item) => <Card className={styles.componentCard} key={item}>{item}<ChevronRight size={15} /></Card>)}

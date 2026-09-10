@@ -1,12 +1,14 @@
 .panel {
   min-width: 0;
+  min-height: 0;
   height: 100%;
+  overflow: hidden;
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
 }
 .header {
   display: flex;
-  height: 52px;
+  height: var(--panel-header-height);
   align-items: stretch;
   justify-content: space-between;
   padding: 0 16px 0 34px;
@@ -14,7 +16,7 @@
 }
 .meta { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 12px; }
 .meta button { width: 30px; height: 30px; border: 0; }
-.editorBody { display: grid; height: calc(100% - 52px); grid-template-columns: 48px minmax(0, 1fr); overflow: hidden; }
+.editorBody { display: grid; min-height: 0; height: calc(100% - var(--panel-header-height)); grid-template-columns: 48px minmax(0, 1fr); overflow: hidden; }
 .lineNumbers {
   display: flex;
   flex-direction: column;
@@ -39,4 +41,13 @@
   color: var(--text-body);
   font: 14px/28px "Cascadia Code", "Microsoft YaHei", monospace;
   scrollbar-color: rgba(105, 116, 135, 0.2) transparent;
+}
+
+@media (max-height: 1000px) {
+  .header { padding: 0 13px 0 27px; }
+  .meta { gap: 9px; font-size: 10px; }
+  .meta button { width: 26px; height: 26px; }
+  .editorBody { grid-template-columns: 39px minmax(0, 1fr); }
+  .lineNumbers { padding: 12px 9px 16px 0; font-size: 11px; line-height: 23px; }
+  .textarea { padding: 12px 18px 32px 16px; font-size: 12px; line-height: 23px; }
 }

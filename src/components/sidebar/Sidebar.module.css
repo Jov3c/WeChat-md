@@ -1,8 +1,10 @@
 .sidebar {
   display: flex;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   flex-direction: column;
+  overflow: hidden;
   border-right: 1px solid var(--border);
   background: var(--bg-soft);
 }
@@ -37,7 +39,7 @@
   font-weight: 600;
 }
 
-.articleArea { min-height: 0; flex: 1; }
+.articleArea { min-height: 0; flex: 1; overflow: hidden; }
 .articleList { padding: 0 15px 16px; }
 
 .article {
@@ -94,6 +96,19 @@
   cursor: pointer;
 }
 .settings:hover { background: var(--bg-hover); }
+
+@media (max-height: 1000px) {
+  .search { padding: 10px 14px 8px; }
+  .navList { padding-inline: 12px; }
+  .navItem { height: 31px; grid-template-columns: 20px 1fr auto; padding-inline: 10px; font-size: 12px; }
+  .sectionLabel { padding: 15px 19px 7px; font-size: 11px; }
+  .articleList { padding: 0 12px 12px; }
+  .article { height: 44px; gap: 3px; padding-left: 16px; }
+  .article[data-selected='true']::before { top: 7px; bottom: 7px; }
+  .articleTitle { font-size: 11px; }
+  .articleDate, .count { font-size: 10px; }
+  .settings { height: 44px; flex: none; padding-inline: 21px; font-size: 12px; }
+}
 
 @media (max-width: 1179px) {
   .search,

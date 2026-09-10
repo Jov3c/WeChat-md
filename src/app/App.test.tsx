@@ -12,6 +12,19 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByRole('region', { name: '排版设置' })).toBeVisible()
   })
 
+  it('keeps fixed controls outside the independently scrollable side-panel content', () => {
+    render(<App />)
+
+    const articleList = screen.getByRole('region', { name: '可滚动文章列表' })
+    expect(articleList).toContainElement(screen.getByRole('button', { name: /AI 工具推荐清单/ }))
+    expect(articleList).not.toContainElement(screen.getByRole('textbox', { name: '搜索文章' }))
+    expect(articleList).not.toContainElement(screen.getByRole('button', { name: /全部文章/ }))
+
+    const settingsContent = screen.getByRole('region', { name: '可滚动排版设置内容' })
+    expect(settingsContent).toContainElement(screen.getByText('当前风格'))
+    expect(settingsContent).not.toContainElement(screen.getByRole('tablist', { name: '设置区域' }))
+  })
+
   it('connects article selection and editor changes to application state', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -29,6 +29,7 @@
 
   --titlebar-height: 46px;
   --toolbar-height: 58px;
+  --panel-header-height: 52px;
   --sidebar-width: 254px;
   --settings-width: 315px;
 
@@ -39,4 +40,14 @@
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+@media (max-height: 1000px) {
+  :root {
+    --titlebar-height: 38px;
+    --toolbar-height: 48px;
+    --panel-header-height: 44px;
+    --sidebar-width: 204px;
+    --settings-width: 252px;
+  }
 }

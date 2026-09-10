@@ -1,6 +1,8 @@
-.panel { min-width: 0; height: 100%; background: var(--bg-panel); }
-.header { height: 52px; padding-left: 25px; border-bottom: 1px solid var(--border); }
-.content { height: calc(100% - 52px); padding: 17px 18px 30px; overflow: auto; }
+.panel { min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: var(--bg-panel); }
+.header { height: var(--panel-header-height); padding-left: 25px; border-bottom: 1px solid var(--border); }
+.content,
+.componentContent { min-height: 0; height: calc(100% - var(--panel-header-height)); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.content { padding: 17px 18px 30px; }
 .content h3, .componentContent h3 { margin: 0 0 12px; font-size: 14px; }
 .styleCard { display: grid; min-height: 68px; grid-template-columns: 48px 1fr auto; align-items: center; gap: 10px; padding: 8px; background: #fff; }
 .stylePreview { display: flex; width: 46px; height: 48px; flex-direction: column; justify-content: center; gap: 5px; padding: 8px; border: 1px solid var(--border-light); border-radius: var(--radius-xs); background: #fff; }
@@ -25,6 +27,26 @@
 .componentContent { padding: 22px 18px; }
 .componentContent p { margin: -3px 0 18px; color: var(--text-muted); font-size: 12px; }
 .componentCard { display: flex; height: 46px; align-items: center; justify-content: space-between; margin-bottom: 9px; padding: 0 13px; color: var(--text-body); }
+
+@media (max-height: 1000px) {
+  .header { padding-left: 20px; }
+  .content { padding: 11px 13px 20px; }
+  .content h3, .componentContent h3 { margin-bottom: 8px; font-size: 12px; }
+  .styleCard { min-height: 54px; grid-template-columns: 39px 1fr auto; gap: 8px; padding: 6px; }
+  .stylePreview { width: 37px; height: 39px; gap: 4px; padding: 6px; }
+  .styleCard strong { margin-bottom: 3px; font-size: 11px; }
+  .styleCard small, .styleCard button { font-size: 9px; }
+  .styleCard button { padding: 5px 6px; }
+  .group { margin-top: 12px; padding: 5px; }
+  .settingRow { height: 30px; grid-template-columns: 21px 1fr auto; padding-inline: 8px; font-size: 11px; }
+  .pageSettings { margin-top: 13px; }
+  .controlRow { min-height: 33px; grid-template-columns: 58px minmax(0, 1fr) 48px 17px; gap: 5px; font-size: 10px; }
+  .controlRow input, .selectLike, .colorValue { height: 27px; }
+  .selectLike, .colorValue { padding-inline: 8px; }
+  .colorValue i { width: 18px; height: 18px; }
+  .componentContent { padding: 16px 13px; }
+  .componentCard { height: 38px; margin-bottom: 7px; font-size: 11px; }
+}
 
 @media (max-width: 1179px) {
   .styleCard { grid-template-columns: 42px 1fr; }

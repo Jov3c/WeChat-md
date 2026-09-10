@@ -123,3 +123,18 @@
   .newButton { min-width: 128px; }
   .copyButton { min-width: 150px; }
 }
+
+@media (max-height: 1000px) {
+  .titleBar { padding: 0 12px 0 16px; }
+  .brand { gap: 9px; }
+  .brandMark { width: 18px; height: 18px; }
+  .brandMark::after { top: 3px; left: 8px; height: 12px; }
+  .brandText { gap: 13px; }
+  .productName { font-size: 12px; }
+  .tagline { font-size: 10px; }
+  .windowButton { width: 28px; height: 25px; }
+  .toolbar { padding-inline: 16px; }
+  .toolbarGroup { gap: 9px; }
+  .newButton { min-width: 114px; }
+  .copyButton { min-width: 134px; }
+}
