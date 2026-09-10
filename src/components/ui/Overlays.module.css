@@ -1,0 +1,147 @@
+.menuContent,
+.tooltipContent,
+.dialogContent,
+.toast {
+  z-index: 50;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
+}
+
+.menuContent {
+  min-width: 168px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  animation: popIn 150ms var(--ease-standard);
+}
+
+.menuItem {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-body);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.menuItem[data-highlighted] {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+}
+
+.tooltipContent {
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  color: var(--text-body);
+  font-size: 12px;
+  animation: fadeIn 120ms var(--ease-standard);
+}
+
+.dialogOverlay {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  background: rgba(29, 44, 66, 0.18);
+  backdrop-filter: blur(2px);
+}
+
+.dialogContent {
+  position: fixed;
+  z-index: 50;
+  top: 50%;
+  left: 50%;
+  width: min(440px, calc(100vw - 48px));
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  transform: translate(-50%, -50%);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 17px;
+}
+
+.dialogClose {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dialogClose:hover {
+  background: var(--bg-hover);
+}
+
+.toastViewport {
+  position: fixed;
+  z-index: 70;
+  right: 22px;
+  bottom: 22px;
+  width: 320px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toast {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-body);
+  animation: popIn 160ms var(--ease-standard);
+}
+
+.scrollRoot {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.scrollViewport {
+  width: 100%;
+  height: 100%;
+}
+
+.scrollbar {
+  display: flex;
+  width: 8px;
+  padding: 2px;
+  background: transparent;
+}
+
+.scrollThumb {
+  flex: 1;
+  border-radius: 99px;
+  background: rgba(105, 116, 135, 0.24);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-3px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menuContent,
+  .tooltipContent,
+  .toast { animation: none; }
+}
