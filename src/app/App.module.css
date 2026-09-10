@@ -1,34 +1,45 @@
 .app { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-app); color: var(--text-primary); }
 .workspace {
+  --workspace-sidebar-width: var(--sidebar-width);
   display: grid;
   min-height: 0;
   height: calc(100vh - var(--titlebar-height) - var(--toolbar-height));
   grid-template-columns: var(--sidebar-width) minmax(420px, 1fr) minmax(440px, 1.02fr) var(--settings-width);
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
+  transition: grid-template-columns 180ms var(--ease-standard);
 }
 
 .workspace > * { min-height: 0; overflow: hidden; }
 
 @media (max-width: 1440px) {
-  .workspace { grid-template-columns: 235px minmax(400px, 1fr) minmax(420px, 1fr) 290px; }
+  .workspace { --workspace-sidebar-width: 235px; grid-template-columns: 235px minmax(400px, 1fr) minmax(420px, 1fr) 290px; }
 }
 
 @media (max-width: 1365px) {
-  .workspace { grid-template-columns: 72px minmax(390px, 1fr) minmax(420px, 1fr) 280px; }
+  .workspace { --workspace-sidebar-width: 72px; grid-template-columns: 72px minmax(390px, 1fr) minmax(420px, 1fr) 280px; }
   .workspace > :first-child { overflow: hidden; }
 }
 
 @media (max-width: 1179px) {
-  .workspace { grid-template-columns: 64px minmax(280px, 0.9fr) minmax(340px, 1.1fr) 250px; }
+  .workspace { --workspace-sidebar-width: 64px; grid-template-columns: 64px minmax(280px, 0.9fr) minmax(340px, 1.1fr) 250px; }
 }
 
 @media (max-width: 959px) {
-  .workspace { grid-template-columns: 58px minmax(270px, 0.9fr) minmax(330px, 1.1fr) 230px; }
+  .workspace { --workspace-sidebar-width: 58px; grid-template-columns: 58px minmax(270px, 0.9fr) minmax(330px, 1.1fr) 230px; }
 }
 
 @media (max-height: 1000px) and (min-width: 1366px) {
   .workspace {
+    --workspace-sidebar-width: var(--sidebar-width);
     grid-template-columns: var(--sidebar-width) minmax(336px, 1fr) minmax(352px, 1.02fr) var(--settings-width);
   }
+}
+
+.workspace[data-settings-open='false'] {
+  grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr) minmax(0, 1.02fr);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace { transition: none; }
 }

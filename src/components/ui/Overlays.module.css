@@ -119,16 +119,19 @@
 
 .scrollbar {
   display: flex;
-  width: 8px;
-  padding: 2px;
+  width: 6px;
+  padding: 1px;
   background: transparent;
 }
 
 .scrollThumb {
   flex: 1;
   border-radius: 99px;
-  background: rgba(105, 116, 135, 0.24);
+  background: var(--scrollbar-thumb);
+  transition: background-color 150ms var(--ease-standard);
 }
+
+.scrollbar:hover .scrollThumb { background: var(--scrollbar-thumb-hover); }
 
 @keyframes popIn {
   from { opacity: 0; transform: translateY(-3px) scale(0.98); }

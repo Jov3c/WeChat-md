@@ -1,4 +1,4 @@
-import { Monitor, MoreHorizontal, Smartphone } from 'lucide-react'
+import { Monitor, MoreHorizontal, PanelRightOpen, Smartphone } from 'lucide-react'
 import { Badge, IconButton, ScrollArea } from '../ui'
 import styles from './PreviewPanel.module.css'
 
@@ -8,14 +8,17 @@ export interface PreviewPanelProps {
   device: PreviewDevice
   onDeviceChange: (device: PreviewDevice) => void
   syncEnabled: boolean
+  settingsOpen: boolean
+  onShowSettings: () => void
 }
 
-export function PreviewPanel({ device, onDeviceChange, syncEnabled }: PreviewPanelProps) {
+export function PreviewPanel({ device, onDeviceChange, syncEnabled, settingsOpen, onShowSettings }: PreviewPanelProps) {
   return (
     <section className={styles.panel} aria-label="公众号预览" data-device={device}>
       <header className={styles.header}>
         <div className={styles.previewTitle}><strong>预览</strong><Badge>双栏同步已{syncEnabled ? '开启' : '关闭'}</Badge></div>
         <div className={styles.deviceActions}>
+          {!settingsOpen && <IconButton label="显示右侧边栏" onClick={onShowSettings}><PanelRightOpen size={16} /></IconButton>}
           <IconButton label="桌面预览" data-active={device === 'desktop'} onClick={() => onDeviceChange('desktop')}><Monitor size={16} /></IconButton>
           <IconButton label="手机预览" data-active={device === 'mobile'} onClick={() => onDeviceChange('mobile')}><Smartphone size={16} /></IconButton>
           <IconButton label="预览更多操作"><MoreHorizontal size={18} /></IconButton>

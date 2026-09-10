@@ -21,6 +21,8 @@
   --border: #ece8e5;
   --border-light: #f2efed;
   --focus-ring: rgba(183, 101, 85, 0.28);
+  --scrollbar-thumb: rgba(105, 116, 135, 0.22);
+  --scrollbar-thumb-hover: rgba(105, 116, 135, 0.38);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
