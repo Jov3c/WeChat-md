@@ -1,0 +1,42 @@
+.panel {
+  min-width: 0;
+  height: 100%;
+  border-right: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.header {
+  display: flex;
+  height: 52px;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 0 16px 0 34px;
+  border-bottom: 1px solid var(--border);
+}
+.meta { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 12px; }
+.meta button { width: 30px; height: 30px; border: 0; }
+.editorBody { display: grid; height: calc(100% - 52px); grid-template-columns: 48px minmax(0, 1fr); overflow: hidden; }
+.lineNumbers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  padding: 17px 12px 20px 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border-light);
+  background: #fdfcfb;
+  color: #a8afb8;
+  font: 13px/28px "Cascadia Code", Consolas, monospace;
+  user-select: none;
+}
+.textarea {
+  width: 100%;
+  height: 100%;
+  padding: 17px 22px 40px 20px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: var(--bg-panel);
+  color: var(--text-body);
+  font: 14px/28px "Cascadia Code", "Microsoft YaHei", monospace;
+  scrollbar-color: rgba(105, 116, 135, 0.2) transparent;
+}

@@ -1,0 +1,15 @@
+.app { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-app); color: var(--text-primary); }
+.workspace {
+  display: grid;
+  height: calc(100vh - var(--titlebar-height) - var(--toolbar-height));
+  grid-template-columns: var(--sidebar-width) minmax(420px, 1fr) minmax(440px, 1.02fr) var(--settings-width);
+}
+
+@media (max-width: 1440px) {
+  .workspace { grid-template-columns: 235px minmax(400px, 1fr) minmax(420px, 1fr) 290px; }
+}
+
+@media (max-width: 1365px) {
+  .workspace { grid-template-columns: 72px minmax(390px, 1fr) minmax(420px, 1fr) 280px; }
+  .workspace > :first-child { overflow: hidden; }
+}

@@ -1,0 +1,28 @@
+.panel { min-width: 0; height: 100%; border-right: 1px solid var(--border); background: var(--bg-soft); }
+.header {
+  display: flex;
+  height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.previewTitle { display: flex; height: 100%; align-items: center; gap: 15px; }
+.previewTitle strong { position: relative; height: 100%; padding-top: 18px; font-size: 14px; }
+.previewTitle strong::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--accent-button); content: ''; }
+.deviceActions { display: flex; gap: 6px; }
+.deviceActions button { width: 31px; height: 31px; border: 0; background: var(--bg-soft); }
+.deviceActions button[data-active='true'] { background: var(--bg-selected); color: var(--accent-text); }
+.canvas { height: calc(100% - 52px); padding: 0 6px; overflow: hidden; }
+.article { width: min(100%, 720px); margin: 0 auto; padding: 45px 32px 70px; color: #28384d; background: #fff; }
+.article h1 { margin: 0 0 24px; font-size: 31px; line-height: 1.35; letter-spacing: -0.025em; }
+.article p { margin: 0 0 21px; font-size: 15px; line-height: 1.75; }
+.article hr { height: 1px; margin: 25px 0 19px; border: 0; background: var(--border); }
+.article h2 { display: flex; align-items: center; gap: 13px; margin: 0 0 17px; font-size: 24px; line-height: 1.4; }
+.article h2 span { display: inline-flex; width: 45px; height: 45px; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: #f2e5e0; font-weight: 500; }
+.article h3 { margin: 15px 0 15px; padding: 8px 10px; border-radius: var(--radius-sm); background: #faf5f2; color: var(--accent-text); font-size: 16px; }
+.article ul { margin: -8px 0 20px; padding-left: 26px; font-size: 15px; line-height: 1.85; }
+.article a { color: var(--accent-text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.article pre { position: relative; margin: 15px 0; padding: 20px 18px; overflow: hidden; border: 1px solid #eceef0; border-radius: var(--radius-sm); background: #f6f7f8; color: #394559; font: 13px/1.7 "Cascadia Code", Consolas, monospace; white-space: pre-wrap; }
+.panel[data-device='mobile'] .article { max-width: 375px; box-shadow: 0 8px 30px rgba(29, 44, 66, 0.08); }
