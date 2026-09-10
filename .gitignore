@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+src-tauri/target/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local product and design references
+/本地公众号Markdown排版编辑器_产品设计基线_v1.1_最终整合版.md
+/WeChat_MD_Editor_UI视觉设计规范_严格还原版.md
+/Codex 图像 2026年9月10日 20_05_06.png
