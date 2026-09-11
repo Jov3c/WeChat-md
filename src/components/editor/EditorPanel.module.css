@@ -25,8 +25,8 @@
   padding: 17px 12px 20px 0;
   overflow: hidden;
   border-right: 1px solid var(--border-light);
-  background: #fdfcfb;
-  color: #a8afb8;
+  background: var(--bg-app);
+  color: var(--text-muted);
   font: 13px/28px "Cascadia Code", Consolas, monospace;
   user-select: none;
 }
@@ -40,7 +40,7 @@
   background: var(--bg-panel);
   color: var(--text-body);
   font: 14px/28px "Cascadia Code", "Microsoft YaHei", monospace;
-  scrollbar-color: rgba(105, 116, 135, 0.2) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 @media (max-height: 1000px) {

@@ -1,33 +1,33 @@
 :root {
   color-scheme: light;
 
-  --bg-app: #faf8f6;
+  --bg-app: #faf9f5;
   --bg-panel: #ffffff;
-  --bg-soft: #fcfaf9;
-  --bg-hover: #f7f2ef;
-  --bg-selected: #f3e9e5;
+  --bg-soft: #f5f4ed;
+  --bg-hover: #f0eee6;
+  --bg-selected: #e8e6dc;
 
-  --text-primary: #1d2c42;
-  --text-body: #36465c;
-  --text-secondary: #697487;
-  --text-muted: #9aa1aa;
+  --text-primary: #141413;
+  --text-body: #2d2d2a;
+  --text-secondary: #5e5d59;
+  --text-muted: #87867f;
 
-  --accent: #d9b1a2;
-  --accent-button: #d49a87;
-  --accent-button-hover: #c88974;
-  --accent-soft: #eedcd5;
-  --accent-text: #b76555;
+  --accent: #141413;
+  --accent-button: #141413;
+  --accent-button-hover: #2d2d2a;
+  --accent-soft: #e8e6dc;
+  --accent-text: #141413;
 
-  --border: #ece8e5;
-  --border-light: #f2efed;
-  --focus-ring: rgba(183, 101, 85, 0.28);
-  --scrollbar-thumb: rgba(105, 116, 135, 0.22);
-  --scrollbar-thumb-hover: rgba(105, 116, 135, 0.38);
+  --border: #e8e6dc;
+  --border-light: #f0eee6;
+  --focus-ring: rgba(20, 20, 19, 0.2);
+  --scrollbar-thumb: rgba(20, 20, 19, 0.18);
+  --scrollbar-thumb-hover: rgba(20, 20, 19, 0.32);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
   --titlebar-height: 46px;
   --toolbar-height: 58px;
@@ -35,8 +35,8 @@
   --sidebar-width: 254px;
   --settings-width: 315px;
 
-  --shadow-popover: 0 8px 24px rgba(29, 44, 66, 0.07);
-  --shadow-soft: 0 1px 3px rgba(29, 44, 66, 0.04);
+  --shadow-popover: 0 8px 24px rgba(20, 20, 19, 0.08);
+  --shadow-soft: 0 1px 3px rgba(20, 20, 19, 0.05);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;

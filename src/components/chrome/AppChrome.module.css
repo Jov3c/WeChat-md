@@ -5,7 +5,7 @@
   justify-content: space-between;
   padding: 0 15px 0 20px;
   border-bottom: 1px solid var(--border-light);
-  background: rgba(250, 248, 246, 0.94);
+  background: rgba(250, 249, 245, 0.94);
   user-select: none;
 }
 
@@ -27,7 +27,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #e2baaa, #c98472);
+  background: linear-gradient(145deg, #3a3a36, #141413);
   transform: rotate(-10deg);
 }
 

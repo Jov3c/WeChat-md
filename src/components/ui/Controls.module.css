@@ -78,35 +78,35 @@
 
 .tabsList {
   display: inline-flex;
-  height: 100%;
-  align-items: stretch;
-  gap: 18px;
+  height: 40px;
+  align-items: center;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--border-light);
 }
 
 .tab {
-  position: relative;
-  padding: 0 3px;
+  height: 32px;
+  padding: 0 12px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background-color 200ms var(--ease-standard), color 100ms var(--ease-standard), box-shadow 150ms var(--ease-standard);
 }
 
-.tab:hover,
-.tab[data-state='active'] {
+.tab:hover {
   color: var(--text-primary);
 }
 
-.tab[data-state='active']::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--accent-button);
-  content: '';
+.tab[data-state='active'] {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(20, 20, 19, 0.04);
 }
 
 .switch {
@@ -116,7 +116,7 @@
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: #d8d9dc;
+  background: #d1cfc6;
   cursor: pointer;
 }
 
@@ -130,7 +130,7 @@
   height: 15px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(29, 44, 66, 0.2);
+  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.18);
   transform: translateX(2px);
   transition: transform 160ms var(--ease-standard);
 }
@@ -155,7 +155,7 @@
   flex: 1;
   overflow: hidden;
   border-radius: 99px;
-  background: #eeeae8;
+  background: var(--border);
 }
 
 .sliderRange {
@@ -171,7 +171,7 @@
   border: 2px solid var(--accent-button);
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(29, 44, 66, 0.16);
+  box-shadow: 0 1px 4px rgba(20, 20, 19, 0.14);
 }
 
 .checkbox {
@@ -181,7 +181,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid #d8d3d0;
+  border: 1px solid #d1cfc6;
   border-radius: var(--radius-xs);
   background: var(--bg-panel);
   color: white;
@@ -211,14 +211,16 @@
 }
 
 .card {
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-panel);
+  box-shadow: 0 1px 2px rgba(20, 20, 19, 0.025);
 }
 
 .card[data-selected='true'] {
-  border-color: var(--accent-soft);
-  background: var(--bg-selected);
+  border-color: var(--text-primary);
+  background: var(--bg-panel);
+  box-shadow: 0 0 0 1px var(--text-primary);
 }
 
 @media (max-height: 1000px) {
@@ -226,7 +228,7 @@
   .input { height: 30px; padding-inline: 10px; font-size: 11px; }
   .input[data-has-icon='true'] { padding-left: 29px; }
   .inputIcon { left: 9px; }
-  .tabsList { gap: 15px; }
-  .tab { font-size: 11px; }
+  .tabsList { height: 32px; padding: 3px; border-radius: 13px; }
+  .tab { height: 26px; padding-inline: 8px; border-radius: 10px; font-size: 10px; }
   .badge { min-height: 19px; padding-inline: 6px; font-size: 10px; }
 }

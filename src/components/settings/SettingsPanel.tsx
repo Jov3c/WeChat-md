@@ -51,7 +51,7 @@ export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange, 
             <div className={styles.controlRow}><span>字号</span><Input aria-label="字号" value="16" readOnly /><em>px</em></div>
             <div className={styles.controlRow}><span>行高</span><Input aria-label="行高" value="1.8" readOnly /></div>
             <div className={styles.controlRow}><span>段间距</span><Input aria-label="段间距" value="16" readOnly /><em>px</em></div>
-            <div className={styles.controlRow}><span>主题色</span><button className={styles.colorValue} type="button"><i />#D8C9C1</button></div>
+            <div className={styles.controlRow}><span>主题色</span><button className={styles.colorValue} type="button"><i />#141413</button></div>
           </section>
         </div>
       ) : (

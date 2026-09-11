@@ -40,7 +40,7 @@
 .button[data-variant='primary'] {
   background: var(--accent-button);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(183, 101, 85, 0.12);
+  box-shadow: 0 2px 6px rgba(20, 20, 19, 0.12);
 }
 
 .button[data-variant='primary']:hover:not(:disabled) {

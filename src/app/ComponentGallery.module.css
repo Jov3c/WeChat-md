@@ -2,8 +2,8 @@
 .intro { display: flex; max-width: 1040px; align-items: flex-start; justify-content: space-between; margin: 0 auto 34px; }
 .intro h1 { margin: 15px 0 8px; font-size: 36px; letter-spacing: -0.04em; }
 .intro p { margin: 0; color: var(--text-secondary); font-size: 15px; }
-.intro a { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text-body); text-decoration: none; }
-.section { max-width: 1040px; margin: 0 auto 18px; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: rgba(255, 255, 255, 0.9); box-shadow: var(--shadow-soft); }
+.intro a { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-panel); color: var(--text-body); text-decoration: none; }
+.section { max-width: 1040px; margin: 0 auto 18px; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-panel); box-shadow: var(--shadow-soft); }
 .section h2 { margin: 0 0 18px; font-size: 15px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .formGrid { display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 18px 24px; }
