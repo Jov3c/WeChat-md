@@ -11,16 +11,16 @@
 .previewTitle { display: flex; height: 100%; align-items: center; gap: 15px; }
 .previewTitle strong { position: relative; height: 100%; padding-top: 18px; font-size: 14px; }
 .previewTitle strong::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--accent-button); content: ''; }
-.syncToggle { min-height: 23px; padding: 0 8px; border: 0; border-radius: 999px; background: var(--bg-hover); color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; transition: background-color var(--motion-ui) var(--ease-expo-out), color var(--motion-ui) var(--ease-expo-out), scale var(--motion-press) var(--ease-expo-out); }
+.syncToggle { min-height: 23px; padding: 0 8px; border: 0; border-radius: 999px; background: var(--bg-hover); color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; transition: background-color var(--motion-ui) var(--ease-standard), color var(--motion-ui) var(--ease-standard); }
 .syncToggle:hover { background: var(--bg-selected); color: var(--text-primary); }
 .syncToggle:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
-.syncLabel { display: inline-block; animation: syncLabelSettle 160ms var(--ease-expo-out) both; }
+.syncLabel { display: inline-block; }
 .deviceActions { display: flex; gap: 6px; }
 .deviceActions button { width: 31px; height: 31px; border: 0; background: var(--bg-soft); }
 .deviceActions button[data-active='true'] { background: var(--bg-selected); color: var(--accent-text); }
 .canvas { height: calc(100% - var(--panel-header-height)); padding: 0 6px; overflow: hidden; }
 .article { width: min(100%, 720px); margin: 0 auto; padding: 45px 32px 70px; color: var(--text-body); background: var(--bg-panel); }
-.article [data-source-start] { transition: background-color var(--motion-ui) var(--ease-expo-out), box-shadow var(--motion-ui) var(--ease-expo-out); }
+.article [data-source-start] { transition: background-color var(--motion-ui) var(--ease-standard), box-shadow var(--motion-ui) var(--ease-standard); }
 .article [data-sync-active='true'] { border-radius: var(--radius-xs); box-shadow: 0 0 0 4px var(--sync-highlight-soft); }
 .article [data-selection-active='true'] { background: var(--sync-highlight); }
 .article h1 { margin: 0 0 24px; font-size: 31px; line-height: 1.35; letter-spacing: -0.025em; }
@@ -46,11 +46,6 @@
 .empty { color: var(--text-muted); }
 .panel[data-device='mobile'] .article { max-width: 375px; box-shadow: 0 8px 30px rgba(20, 20, 19, 0.08); }
 
-@keyframes syncLabelSettle {
-  from { opacity: 0.45; transform: translateY(2px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @media (max-height: 1000px) {
   .header { padding: 0 12px 0 22px; }
   .previewTitle { gap: 12px; }
@@ -69,8 +64,4 @@
   .article pre { margin: 12px 0; padding: 16px 14px; font-size: 11px; }
   .article table { font-size: 11px; }
   .article th, .article td { padding: 7px 8px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .syncLabel { animation: none; }
 }

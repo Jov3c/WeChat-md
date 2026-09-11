@@ -39,11 +39,10 @@
 
   --shadow-popover: 0 8px 24px rgba(20, 20, 19, 0.08);
   --shadow-soft: 0 1px 3px rgba(20, 20, 19, 0.05);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-standard: var(--ease-expo-out);
-  --motion-press: 120ms;
-  --motion-ui: 180ms;
+  --ease-standard: var(--ease-out);
+  --motion-ui: 120ms;
   --motion-panel: 240ms;
 
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;

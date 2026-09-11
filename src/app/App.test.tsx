@@ -146,6 +146,23 @@ describe('WeChat MD application shell', () => {
     expect(previewText).toHaveAttribute('data-selected-text', selectedText)
   })
 
+  it('keeps editor selection highlighting available when intelligent synchronization is disabled', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const selectedText = '开源的本地大模型'
+    const start = editor.value.indexOf(selectedText)
+    await user.click(screen.getByRole('button', { name: '双栏同步已开启' }))
+
+    editor.setSelectionRange(start, start + selectedText.length)
+    fireEvent.select(editor)
+
+    const preview = within(screen.getByRole('region', { name: '公众号预览' }))
+    const previewText = preview.getByText(/Ollama 是一个开源的本地大模型运行工具/)
+    expect(previewText).toHaveAttribute('data-selection-active', 'true')
+    expect(previewText).toHaveAttribute('data-selected-text', selectedText)
+  })
+
   it('moves the editor selection to a clicked preview block', async () => {
     const user = userEvent.setup()
     render(<App />)

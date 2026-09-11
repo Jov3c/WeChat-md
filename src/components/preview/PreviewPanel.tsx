@@ -76,7 +76,7 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
         <div className={styles.previewTitle}>
           <strong>预览</strong>
           <button className={styles.syncToggle} type="button" aria-pressed={syncEnabled} onClick={() => onSyncEnabledChange(!syncEnabled)}>
-            <span className={styles.syncLabel} key={syncEnabled ? 'enabled' : 'disabled'}>双栏同步已{syncEnabled ? '开启' : '关闭'}</span>
+            <span className={styles.syncLabel}>双栏同步已{syncEnabled ? '开启' : '关闭'}</span>
           </button>
         </div>
         <div className={styles.deviceActions}>
@@ -93,7 +93,7 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
             className={styles.article}
             onClick={activateBlock}
           >
-            <MarkdownRenderer markdown={markdown} selection={syncEnabled ? selection : undefined} />
+            <MarkdownRenderer markdown={markdown} selection={selection} />
           </article>
         </ScrollArea>
       </div>

@@ -45,11 +45,7 @@ select {
 
 button {
   color: inherit;
-  transition: scale var(--motion-press) var(--ease-expo-out), background-color var(--motion-ui) var(--ease-expo-out), color var(--motion-ui) var(--ease-expo-out), border-color var(--motion-ui) var(--ease-expo-out), box-shadow var(--motion-ui) var(--ease-expo-out);
-}
-
-button:not(:disabled):active {
-  scale: 0.97;
+  transition: background-color var(--motion-ui) var(--ease-standard), color var(--motion-ui) var(--ease-standard), border-color var(--motion-ui) var(--ease-standard), box-shadow var(--motion-ui) var(--ease-standard);
 }
 
 ::selection {
@@ -64,5 +60,4 @@ button:not(:disabled):active {
 
 @media (prefers-reduced-motion: reduce) {
   button { transition-duration: 1ms; }
-  button:not(:disabled):active { scale: 1; }
 }

@@ -4,7 +4,7 @@
 .switch,
 .checkbox,
 .card {
-  transition: background-color var(--motion-ui) var(--ease-expo-out), border-color var(--motion-ui) var(--ease-expo-out), color var(--motion-ui) var(--ease-expo-out), box-shadow var(--motion-ui) var(--ease-expo-out), opacity var(--motion-ui) var(--ease-expo-out), transform var(--motion-ui) var(--ease-expo-out), scale var(--motion-press) var(--ease-expo-out);
+  transition: background-color var(--motion-ui) var(--ease-standard), border-color var(--motion-ui) var(--ease-standard), color var(--motion-ui) var(--ease-standard), box-shadow var(--motion-ui) var(--ease-standard), opacity var(--motion-ui) var(--ease-standard);
 }
 
 .iconButton {
@@ -96,7 +96,7 @@
   font-weight: 400;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--motion-ui) var(--ease-expo-out), color 120ms var(--ease-expo-out), box-shadow var(--motion-ui) var(--ease-expo-out), scale var(--motion-press) var(--ease-expo-out);
+  transition: background-color var(--motion-ui) var(--ease-standard), color var(--motion-ui) var(--ease-standard), box-shadow var(--motion-ui) var(--ease-standard);
 }
 
 .tab:hover {
@@ -118,6 +118,7 @@
   border-radius: 999px;
   background: #d1cfc6;
   cursor: pointer;
+  transition: background-color 160ms var(--ease-out);
 }
 
 .switch[data-state='checked'] {
@@ -132,14 +133,12 @@
   background: #fff;
   box-shadow: 0 1px 3px rgba(20, 20, 19, 0.18);
   transform: translateX(2px);
-  transition: transform 190ms var(--ease-overshoot), box-shadow var(--motion-ui) var(--ease-expo-out);
+  transition: transform 160ms var(--ease-out);
 }
 
 .switchThumb[data-state='checked'] {
   transform: translateX(17px);
 }
-
-.switch:active .switchThumb { box-shadow: 0 1px 5px rgba(20, 20, 19, 0.26); }
 
 .slider {
   position: relative;
