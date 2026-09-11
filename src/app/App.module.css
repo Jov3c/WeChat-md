@@ -7,7 +7,7 @@
   grid-template-columns: var(--sidebar-width) minmax(420px, 1fr) minmax(440px, 1.02fr) var(--settings-width);
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
-  transition: grid-template-columns 180ms var(--ease-standard);
+  transition: grid-template-columns var(--motion-panel) var(--ease-expo-out);
 }
 
 .workspace > * { min-height: 0; overflow: hidden; }
@@ -37,7 +37,7 @@
 }
 
 .workspace[data-settings-open='false'] {
-  grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr) minmax(0, 1.02fr);
+  grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr) minmax(0, 1.02fr) 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

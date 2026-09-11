@@ -6,6 +6,8 @@
   --bg-soft: #f5f4ed;
   --bg-hover: #f0eee6;
   --bg-selected: #e8e6dc;
+  --sync-highlight: #ecbbab;
+  --sync-highlight-soft: rgba(236, 187, 171, 0.48);
 
   --text-primary: #141413;
   --text-body: #2d2d2a;
@@ -37,7 +39,12 @@
 
   --shadow-popover: 0 8px 24px rgba(20, 20, 19, 0.08);
   --shadow-soft: 0 1px 3px rgba(20, 20, 19, 0.05);
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-standard: var(--ease-expo-out);
+  --motion-press: 120ms;
+  --motion-ui: 180ms;
+  --motion-panel: 240ms;
 
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   font-synthesis: none;

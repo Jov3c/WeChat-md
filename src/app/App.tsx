@@ -138,7 +138,7 @@ export function App() {
           settingsOpen={settingsOpen}
           onShowSettings={() => setRightSidebarOpen(true)}
         />
-        {settingsOpen && <SettingsPanel tab={settingsTab} onTabChange={setSettingsTab} pageWidth={pageWidth} onPageWidthChange={setPageWidth} onClose={() => setRightSidebarOpen(false)} />}
+        <SettingsPanel open={settingsOpen} tab={settingsTab} onTabChange={setSettingsTab} pageWidth={pageWidth} onPageWidthChange={setPageWidth} onClose={() => setRightSidebarOpen(false)} />
       </div>
       <Toast open={toastOpen} onOpenChange={setToastOpen} message={toastMessage} />
     </main>

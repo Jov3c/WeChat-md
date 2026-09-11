@@ -45,14 +45,24 @@ select {
 
 button {
   color: inherit;
+  transition: scale var(--motion-press) var(--ease-expo-out), background-color var(--motion-ui) var(--ease-expo-out), color var(--motion-ui) var(--ease-expo-out), border-color var(--motion-ui) var(--ease-expo-out), box-shadow var(--motion-ui) var(--ease-expo-out);
+}
+
+button:not(:disabled):active {
+  scale: 0.97;
 }
 
 ::selection {
-  background: var(--accent-soft);
+  background: var(--sync-highlight);
   color: var(--text-primary);
 }
 
 :focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button { transition-duration: 1ms; }
+  button:not(:disabled):active { scale: 1; }
 }

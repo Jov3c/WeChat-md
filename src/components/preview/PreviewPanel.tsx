@@ -58,7 +58,6 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
   }, [selection?.startLine, syncEnabled])
 
   const activateBlock = (event: MouseEvent<HTMLElement>) => {
-    if (!syncEnabled) return
     const target = (event.target as Element).closest<HTMLElement>('[data-source-start]')
     if (!target) return
     onBlockActivate(Number(target.dataset.sourceStart), Number(target.dataset.sourceEnd))
@@ -77,7 +76,7 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
         <div className={styles.previewTitle}>
           <strong>预览</strong>
           <button className={styles.syncToggle} type="button" aria-pressed={syncEnabled} onClick={() => onSyncEnabledChange(!syncEnabled)}>
-            双栏同步已{syncEnabled ? '开启' : '关闭'}
+            <span className={styles.syncLabel} key={syncEnabled ? 'enabled' : 'disabled'}>双栏同步已{syncEnabled ? '开启' : '关闭'}</span>
           </button>
         </div>
         <div className={styles.deviceActions}>

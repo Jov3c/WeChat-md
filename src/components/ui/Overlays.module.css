@@ -12,8 +12,11 @@
   min-width: 168px;
   padding: 6px;
   border-radius: var(--radius-md);
-  animation: popIn 150ms var(--ease-standard);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
+
+.menuContent[data-state='open'] { animation: popIn 180ms var(--ease-expo-out); }
+.menuContent[data-state='closed'] { animation: popOut 120ms var(--ease-expo-out); }
 
 .menuItem {
   display: flex;
@@ -37,7 +40,8 @@
   border-radius: var(--radius-xs);
   color: var(--text-body);
   font-size: 12px;
-  animation: fadeIn 120ms var(--ease-standard);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: tooltipIn 140ms var(--ease-expo-out);
 }
 
 .dialogOverlay {
@@ -47,6 +51,8 @@
   background: rgba(29, 44, 66, 0.18);
   backdrop-filter: blur(2px);
 }
+.dialogOverlay[data-state='open'] { animation: fadeIn 180ms var(--ease-expo-out); }
+.dialogOverlay[data-state='closed'] { animation: fadeOut 120ms var(--ease-expo-out); }
 
 .dialogContent {
   position: fixed;
@@ -58,6 +64,8 @@
   border-radius: var(--radius-lg);
   transform: translate(-50%, -50%);
 }
+.dialogContent[data-state='open'] { animation: dialogIn 220ms var(--ease-expo-out); }
+.dialogContent[data-state='closed'] { animation: dialogOut 140ms var(--ease-expo-out); }
 
 .dialogHeader {
   display: flex;
@@ -103,8 +111,9 @@
   padding: 12px 14px;
   border-radius: var(--radius-md);
   color: var(--text-body);
-  animation: popIn 160ms var(--ease-standard);
 }
+.toast[data-state='open'] { animation: toastIn 220ms var(--ease-expo-out); }
+.toast[data-state='closed'] { animation: toastOut 150ms var(--ease-expo-out); }
 
 .scrollRoot {
   width: 100%;
@@ -134,8 +143,13 @@
 .scrollbar:hover .scrollThumb { background: var(--scrollbar-thumb-hover); }
 
 @keyframes popIn {
-  from { opacity: 0; transform: translateY(-3px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-5px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes popOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-3px) scale(0.98); }
 }
 
 @keyframes fadeIn {
@@ -143,8 +157,17 @@
   to { opacity: 1; }
 }
 
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes tooltipIn { from { opacity: 0; transform: translateY(3px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes dialogIn { from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes dialogOut { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -49%) scale(0.98); } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+
 @media (prefers-reduced-motion: reduce) {
   .menuContent,
   .tooltipContent,
+  .dialogOverlay,
+  .dialogContent,
   .toast { animation: none; }
 }

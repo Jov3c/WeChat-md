@@ -36,15 +36,19 @@ describe('WeChat MD application shell', () => {
     render(<App />)
 
     const workspace = screen.getByRole('region', { name: '编辑工作区' })
+    const settings = screen.getByRole('region', { name: /^排版设置$/ })
     await user.click(screen.getByRole('button', { name: '隐藏右侧边栏' }))
 
     expect(workspace).toHaveAttribute('data-settings-open', 'false')
     expect(screen.queryByRole('region', { name: /^排版设置$/ })).not.toBeInTheDocument()
+    expect(settings).toHaveAttribute('data-open', 'false')
+    expect(settings).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByRole('button', { name: '显示右侧边栏' })).toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: '显示右侧边栏' }))
     expect(workspace).toHaveAttribute('data-settings-open', 'true')
-    expect(screen.getByRole('region', { name: /^排版设置$/ })).toBeVisible()
+    expect(settings).toHaveAttribute('data-open', 'true')
+    expect(settings).not.toHaveAttribute('aria-hidden')
     expect(screen.getByRole('button', { name: '隐藏右侧边栏' })).toHaveFocus()
   })
 
@@ -163,6 +167,19 @@ describe('WeChat MD application shell', () => {
 
     await user.click(screen.getByRole('button', { name: '双栏同步已关闭' }))
     expect(screen.getByRole('button', { name: '双栏同步已开启' })).toBeVisible()
+  })
+
+  it('keeps preview click-to-locate available when intelligent synchronization is disabled', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const expectedStart = editor.value.indexOf('## 2. 安装 Ollama')
+    await user.click(screen.getByRole('button', { name: '双栏同步已开启' }))
+
+    await user.click(screen.getByRole('heading', { name: '2 安装 Ollama' }))
+
+    expect(editor).toHaveFocus()
+    expect(editor.selectionStart).toBe(expectedStart)
   })
 
   it('keeps preview scroll position aligned with editor progress', () => {

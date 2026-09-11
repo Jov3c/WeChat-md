@@ -8,6 +8,7 @@ export interface SettingsPanelProps {
   pageWidth: number[]
   onPageWidthChange: (value: number[]) => void
   onClose: () => void
+  open: boolean
 }
 
 const settings = [
@@ -19,9 +20,9 @@ const settings = [
   { label: '其他样式', icon: PlusCircle },
 ]
 
-export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange, onClose }: SettingsPanelProps) {
+export function SettingsPanel({ tab, onTabChange, pageWidth, onPageWidthChange, onClose, open }: SettingsPanelProps) {
   return (
-    <aside className={styles.panel} role="region" aria-label="排版设置">
+    <aside className={styles.panel} role="region" aria-label="排版设置" data-open={open} aria-hidden={open ? undefined : true} inert={open ? undefined : true}>
       <header className={styles.header}>
         <Tabs ariaLabel="设置区域" items={[{ value: 'layout', label: '排版设置' }, { value: 'components', label: '组件' }, { value: 'page', label: '页面设置' }]} value={tab} onValueChange={onTabChange} />
         <IconButton label="隐藏右侧边栏" onClick={onClose}><PanelRightClose size={16} /></IconButton>
