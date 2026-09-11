@@ -7,6 +7,8 @@ const renderPreview = (markdown: string) => render(
     device="desktop"
     onDeviceChange={() => undefined}
     syncEnabled
+    onSyncEnabledChange={() => undefined}
+    onBlockActivate={() => undefined}
     settingsOpen
     onShowSettings={() => undefined}
   />,

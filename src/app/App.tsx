@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { TitleBar } from '../components/chrome/TitleBar'
 import { Toolbar } from '../components/chrome/Toolbar'
-import { EditorPanel } from '../components/editor/EditorPanel'
-import { PreviewPanel, type PreviewDevice } from '../components/preview/PreviewPanel'
+import { EditorPanel, type EditorPanelHandle, type EditorSelection } from '../components/editor/EditorPanel'
+import { PreviewPanel, type PreviewDevice, type PreviewPanelHandle } from '../components/preview/PreviewPanel'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { Toast } from '../components/ui'
@@ -34,10 +34,14 @@ export function App() {
   const [device, setDevice] = useState<PreviewDevice>('desktop')
   const [pageWidth, setPageWidth] = useState([720])
   const [settingsOpen, setSettingsOpen] = useState(true)
+  const [syncEnabled, setSyncEnabled] = useState(true)
+  const [editorSelection, setEditorSelection] = useState<EditorSelection>()
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('操作已完成')
   const sidebarToggleStarted = useRef(false)
   const previewArticleRef = useRef<HTMLElement>(null)
+  const editorPanelRef = useRef<EditorPanelHandle>(null)
+  const previewPanelRef = useRef<PreviewPanelHandle>(null)
   const selectedArticle = articleList.find((article) => article.id === selectedId)
   const content = selectedArticle?.content ?? ''
 
@@ -111,8 +115,29 @@ export function App() {
       />
       <div className={styles.workspace} role="region" aria-label="编辑工作区" data-settings-open={settingsOpen}>
         <Sidebar articles={articleList} selectedId={selectedId} onSelect={selectArticle} />
-        <EditorPanel value={content} onChange={updateContent} tab={editorTab} onTabChange={setEditorTab} />
-        <PreviewPanel markdown={content} articleRef={previewArticleRef} device={device} onDeviceChange={setDevice} syncEnabled settingsOpen={settingsOpen} onShowSettings={() => setRightSidebarOpen(true)} />
+        <EditorPanel
+          ref={editorPanelRef}
+          value={content}
+          onChange={updateContent}
+          tab={editorTab}
+          onTabChange={setEditorTab}
+          onSelectionChange={setEditorSelection}
+          onScrollRatioChange={(ratio) => { if (syncEnabled) previewPanelRef.current?.setScrollRatio(ratio) }}
+        />
+        <PreviewPanel
+          ref={previewPanelRef}
+          markdown={content}
+          articleRef={previewArticleRef}
+          device={device}
+          onDeviceChange={setDevice}
+          syncEnabled={syncEnabled}
+          selection={editorSelection}
+          onSyncEnabledChange={setSyncEnabled}
+          onBlockActivate={(startLine, endLine) => editorPanelRef.current?.focusLines(startLine, endLine)}
+          onScrollRatioChange={(ratio) => { if (syncEnabled) editorPanelRef.current?.setScrollRatio(ratio) }}
+          settingsOpen={settingsOpen}
+          onShowSettings={() => setRightSidebarOpen(true)}
+        />
         {settingsOpen && <SettingsPanel tab={settingsTab} onTabChange={setSettingsTab} pageWidth={pageWidth} onPageWidthChange={setPageWidth} onClose={() => setRightSidebarOpen(false)} />}
       </div>
       <Toast open={toastOpen} onOpenChange={setToastOpen} message={toastMessage} />

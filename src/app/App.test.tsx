@@ -1,9 +1,17 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { App } from './App'
 
 describe('WeChat MD application shell', () => {
+  const setScrollMetrics = (element: HTMLElement, scrollHeight: number, clientHeight: number, scrollTop: number) => {
+    Object.defineProperties(element, {
+      scrollHeight: { configurable: true, value: scrollHeight },
+      clientHeight: { configurable: true, value: clientHeight },
+      scrollTop: { configurable: true, writable: true, value: scrollTop },
+    })
+  }
+
   it('renders the four workspace regions beneath the application chrome', () => {
     render(<App />)
 
@@ -106,6 +114,93 @@ describe('WeChat MD application shell', () => {
 
     expect(write).not.toHaveBeenCalled()
     expect(await screen.findByText('文章内容为空')).toBeVisible()
+  })
+
+  it('maps the editor cursor to the matching preview block', () => {
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const offset = editor.value.indexOf('## 2. 安装 Ollama')
+
+    editor.setSelectionRange(offset, offset)
+    fireEvent.select(editor)
+
+    expect(screen.getByRole('heading', { name: '2 安装 Ollama' })).toHaveAttribute('data-sync-active', 'true')
+  })
+
+  it('tracks the selected source text on its preview block', () => {
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const selectedText = '开源的本地大模型'
+    const start = editor.value.indexOf(selectedText)
+
+    editor.setSelectionRange(start, start + selectedText.length)
+    fireEvent.select(editor)
+
+    const preview = within(screen.getByRole('region', { name: '公众号预览' }))
+    const previewText = preview.getByText(/Ollama 是一个开源的本地大模型运行工具/)
+    expect(previewText).toHaveAttribute('data-selection-active', 'true')
+    expect(previewText).toHaveAttribute('data-selected-text', selectedText)
+  })
+
+  it('moves the editor selection to a clicked preview block', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const expectedStart = editor.value.indexOf('## 2. 安装 Ollama')
+
+    await user.click(screen.getByRole('heading', { name: '2 安装 Ollama' }))
+
+    expect(editor).toHaveFocus()
+    expect(editor.selectionStart).toBe(expectedStart)
+  })
+
+  it('lets the user disable and re-enable intelligent synchronization', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '双栏同步已开启' }))
+    expect(screen.getByRole('button', { name: '双栏同步已关闭' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: '双栏同步已关闭' }))
+    expect(screen.getByRole('button', { name: '双栏同步已开启' })).toBeVisible()
+  })
+
+  it('keeps preview scroll position aligned with editor progress', () => {
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
+    const previewScroller = screen.getByRole('region', { name: '预览滚动区域' })
+    setScrollMetrics(editor, 1000, 200, 400)
+    setScrollMetrics(previewScroller, 2000, 400, 0)
+
+    fireEvent.scroll(editor)
+
+    expect(previewScroller.scrollTop).toBe(800)
+  })
+
+  it('keeps editor scroll position aligned with manual preview scrolling', () => {
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
+    const previewScroller = screen.getByRole('region', { name: '预览滚动区域' })
+    setScrollMetrics(editor, 1000, 200, 0)
+    setScrollMetrics(previewScroller, 2000, 400, 1200)
+
+    fireEvent.scroll(previewScroller)
+
+    expect(editor.scrollTop).toBe(600)
+  })
+
+  it('stops linking scroll positions while intelligent synchronization is disabled', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
+    const previewScroller = screen.getByRole('region', { name: '预览滚动区域' })
+    setScrollMetrics(editor, 1000, 200, 400)
+    setScrollMetrics(previewScroller, 2000, 400, 0)
+    await user.click(screen.getByRole('button', { name: '双栏同步已开启' }))
+
+    fireEvent.scroll(editor)
+
+    expect(previewScroller.scrollTop).toBe(0)
   })
 
   it('connects article selection and editor changes to application state', async () => {
