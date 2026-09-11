@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import { App } from './App'
 
 describe('WeChat MD application shell', () => {
@@ -37,6 +38,74 @@ describe('WeChat MD application shell', () => {
     expect(workspace).toHaveAttribute('data-settings-open', 'true')
     expect(screen.getByRole('region', { name: /^排版设置$/ })).toBeVisible()
     expect(screen.getByRole('button', { name: '隐藏右侧边栏' })).toHaveFocus()
+  })
+
+  it('keeps article edits when the user switches away and returns', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
+    await user.clear(editor)
+    await user.type(editor, '# 修改后仍然存在')
+    await user.click(screen.getByRole('button', { name: /AI 工具推荐清单/ }))
+    await user.click(screen.getByRole('button', { name: /在本地运行大语言模型/ }))
+
+    expect(editor).toHaveValue('# 修改后仍然存在')
+  })
+
+  it('creates and selects a new article in the article library', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '新建文章' }))
+
+    expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: /未命名文章/ })).toBeVisible()
+  })
+
+  it('imports a Markdown file as a new editable article', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const file = new File(['# 导入成功\n\n文件正文'], '导入文章.md', { type: 'text/markdown' })
+
+    await user.upload(screen.getByLabelText('选择 Markdown 文件'), file)
+
+    expect(await screen.findByRole('heading', { name: '导入成功' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /导入文章/ })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 导入成功\n\n文件正文')
+  })
+
+  it('copies both rich HTML and plain text for WeChat', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, writeText } })
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    const item = write.mock.calls[0][0][0] as TestClipboardItem
+    expect(Object.keys(item.data).sort()).toEqual(['text/html', 'text/plain'])
+    expect(item.data['text/html'].type).toBe('text/html')
+    expect(item.data['text/plain'].type).toBe('text/plain')
+  })
+
+  it('prevents copying an empty article', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, writeText: vi.fn() } })
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: '新建文章' }))
+
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+
+    expect(write).not.toHaveBeenCalled()
+    expect(await screen.findByText('文章内容为空')).toBeVisible()
   })
 
   it('connects article selection and editor changes to application state', async () => {

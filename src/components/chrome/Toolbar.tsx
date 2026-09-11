@@ -7,12 +7,13 @@ import {
   MoreHorizontal,
   Settings2,
 } from 'lucide-react'
+import { useRef } from 'react'
 import { Button, Divider, DropdownMenu, IconButton, Tooltip } from '../ui'
 import styles from './AppChrome.module.css'
 
 export interface ToolbarProps {
   onNewArticle: () => void
-  onImport: () => void
+  onImport: (file: File) => void
   onExtract: () => void
   onCopy: () => void
 }
@@ -28,13 +29,27 @@ const styleItems = [
 ]
 
 export function Toolbar({ onNewArticle, onImport, onExtract, onCopy }: ToolbarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="文章操作">
       <div className={styles.toolbarGroup}>
         <Button className={styles.newButton} variant="primary" onClick={onNewArticle}>
           <FilePlus2 size={17} /> 新建文章
         </Button>
-        <Button onClick={onImport}><FileInput size={16} /> 导入 MD</Button>
+        <Button onClick={() => fileInputRef.current?.click()}><FileInput size={16} /> 导入 MD</Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.markdown,text/markdown,text/plain"
+          aria-label="选择 Markdown 文件"
+          hidden
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0]
+            if (file) onImport(file)
+            event.currentTarget.value = ''
+          }}
+        />
         <Button onClick={onExtract}><CheckCircle2 size={16} /> 提取公众号</Button>
         <Divider />
         <DropdownMenu

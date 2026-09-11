@@ -1,10 +1,14 @@
 import { Monitor, MoreHorizontal, PanelRightOpen, Smartphone } from 'lucide-react'
+import type { Ref } from 'react'
 import { Badge, IconButton, ScrollArea } from '../ui'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import styles from './PreviewPanel.module.css'
 
 export type PreviewDevice = 'desktop' | 'mobile'
 
 export interface PreviewPanelProps {
+  markdown: string
+  articleRef?: Ref<HTMLElement>
   device: PreviewDevice
   onDeviceChange: (device: PreviewDevice) => void
   syncEnabled: boolean
@@ -12,7 +16,7 @@ export interface PreviewPanelProps {
   onShowSettings: () => void
 }
 
-export function PreviewPanel({ device, onDeviceChange, syncEnabled, settingsOpen, onShowSettings }: PreviewPanelProps) {
+export function PreviewPanel({ markdown, articleRef, device, onDeviceChange, syncEnabled, settingsOpen, onShowSettings }: PreviewPanelProps) {
   return (
     <section className={styles.panel} aria-label="公众号预览" data-device={device}>
       <header className={styles.header}>
@@ -26,18 +30,8 @@ export function PreviewPanel({ device, onDeviceChange, syncEnabled, settingsOpen
       </header>
       <div className={styles.canvas}>
         <ScrollArea>
-          <article className={styles.article}>
-            <h1>在本地运行大语言模型：<br />Ollama 完全指南</h1>
-            <p>Ollama 是一个简单易用的工具，让你可以在本地运行各种开源大语言模型。本文将从安装、使用到常见问题，带你快速上手。</p>
-            <hr />
-            <h2><span>1</span>什么是 Ollama？</h2>
-            <p>Ollama 是一个开源的本地大模型运行工具，支持 Llama、Mistral、Gemma 等多种模型。它的特点是：</p>
-            <ul><li>安装简单</li><li>使用方便</li><li>支持多种模型</li><li>运行在本地，保护隐私</li></ul>
-            <hr />
-            <h2><span>2</span>安装 Ollama</h2>
-            <h3>2.1　下载安装</h3>
-            <p>访问 <a href="https://ollama.com">Ollama 官网</a> 下载适合你系统的版本。</p>
-            <pre><code>bash{`\n\n`}# macOS{`\n`}brew install ollama{`\n\n`}# Windows{`\n`}# 下载安装包并按照提示安装</code></pre>
+          <article ref={articleRef} className={styles.article}>
+            <MarkdownRenderer markdown={markdown} />
           </article>
         </ScrollArea>
       </div>

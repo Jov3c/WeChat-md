@@ -23,7 +23,9 @@
     "@radix-ui/react-tooltip": "latest",
     "lucide-react": "latest",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "latest",

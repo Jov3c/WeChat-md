@@ -30,13 +30,14 @@ describe('application chrome', () => {
       />,
     )
 
+    const file = new File(['# 导入'], '文章.md', { type: 'text/markdown' })
     await user.click(screen.getByRole('button', { name: '新建文章' }))
-    await user.click(screen.getByRole('button', { name: '导入 MD' }))
+    await user.upload(screen.getByLabelText('选择 Markdown 文件'), file)
     await user.click(screen.getByRole('button', { name: '提取公众号' }))
     await user.click(screen.getByRole('button', { name: '复制到公众号' }))
 
     expect(onNewArticle).toHaveBeenCalledOnce()
-    expect(onImport).toHaveBeenCalledOnce()
+    expect(onImport).toHaveBeenCalledWith(file)
     expect(onExtract).toHaveBeenCalledOnce()
     expect(onCopy).toHaveBeenCalledOnce()
   })

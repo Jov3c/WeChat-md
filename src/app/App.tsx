@@ -6,19 +6,40 @@ import { PreviewPanel, type PreviewDevice } from '../components/preview/PreviewP
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { Toast } from '../components/ui'
-import { articles } from './demoData'
+import { copyPreviewArticle } from '../features/clipboard/richTextClipboard'
+import { articles, type ArticleItem } from './demoData'
 import styles from './App.module.css'
 
+let articleSequence = 0
+
+function createArticleId() {
+  articleSequence += 1
+  return `local-${Date.now()}-${articleSequence}`
+}
+
+function readFileText(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.addEventListener('load', () => resolve(String(reader.result ?? '')))
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('无法读取文件')))
+    reader.readAsText(file)
+  })
+}
+
 export function App() {
+  const [articleList, setArticleList] = useState<ArticleItem[]>(() => articles.map((article) => ({ ...article })))
   const [selectedId, setSelectedId] = useState(articles[0].id)
-  const [content, setContent] = useState(articles[0].content)
   const [editorTab, setEditorTab] = useState('edit')
   const [settingsTab, setSettingsTab] = useState('layout')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
   const [pageWidth, setPageWidth] = useState([720])
   const [settingsOpen, setSettingsOpen] = useState(true)
   const [toastOpen, setToastOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState('操作已完成')
   const sidebarToggleStarted = useRef(false)
+  const previewArticleRef = useRef<HTMLElement>(null)
+  const selectedArticle = articleList.find((article) => article.id === selectedId)
+  const content = selectedArticle?.content ?? ''
 
   useEffect(() => {
     if (!sidebarToggleStarted.current) return
@@ -32,28 +53,69 @@ export function App() {
   }
 
   const selectArticle = (id: string) => {
-    const article = articles.find((item) => item.id === id)
-    if (!article) return
+    if (!articleList.some((article) => article.id === id)) return
     setSelectedId(id)
-    setContent(article.content)
+  }
+
+  const updateContent = (nextContent: string) => {
+    setArticleList((current) => current.map((article) => article.id === selectedId ? { ...article, content: nextContent, date: '刚刚' } : article))
+  }
+
+  const createNewArticle = () => {
+    const article: ArticleItem = { id: createArticleId(), title: '未命名文章', date: '刚刚', content: '' }
+    setArticleList((current) => [article, ...current])
+    setSelectedId(article.id)
+  }
+
+  const importArticle = async (file: File) => {
+    try {
+      const markdown = await readFileText(file)
+      const title = file.name.replace(/\.(?:md|markdown|txt)$/i, '') || '导入文章'
+      const article: ArticleItem = { id: createArticleId(), title, date: '刚刚', content: markdown }
+      setArticleList((current) => [article, ...current])
+      setSelectedId(article.id)
+      setToastMessage('Markdown 已导入')
+      setToastOpen(true)
+    } catch {
+      setToastMessage('文件读取失败')
+      setToastOpen(true)
+    }
+  }
+
+  const copyArticle = async () => {
+    if (!content.trim()) {
+      setToastMessage('文章内容为空')
+      setToastOpen(true)
+      return
+    }
+
+    if (!previewArticleRef.current) return
+
+    try {
+      await copyPreviewArticle(previewArticleRef.current, content)
+      setToastMessage('已复制到剪贴板')
+    } catch {
+      setToastMessage('复制失败，请检查剪贴板权限')
+    }
+    setToastOpen(true)
   }
 
   return (
     <main className={styles.app}>
       <TitleBar />
       <Toolbar
-        onNewArticle={() => setContent('')}
-        onImport={() => undefined}
+        onNewArticle={createNewArticle}
+        onImport={importArticle}
         onExtract={() => undefined}
-        onCopy={() => setToastOpen(true)}
+        onCopy={copyArticle}
       />
       <div className={styles.workspace} role="region" aria-label="编辑工作区" data-settings-open={settingsOpen}>
-        <Sidebar articles={articles} selectedId={selectedId} onSelect={selectArticle} />
-        <EditorPanel value={content} onChange={setContent} tab={editorTab} onTabChange={setEditorTab} />
-        <PreviewPanel device={device} onDeviceChange={setDevice} syncEnabled settingsOpen={settingsOpen} onShowSettings={() => setRightSidebarOpen(true)} />
+        <Sidebar articles={articleList} selectedId={selectedId} onSelect={selectArticle} />
+        <EditorPanel value={content} onChange={updateContent} tab={editorTab} onTabChange={setEditorTab} />
+        <PreviewPanel markdown={content} articleRef={previewArticleRef} device={device} onDeviceChange={setDevice} syncEnabled settingsOpen={settingsOpen} onShowSettings={() => setRightSidebarOpen(true)} />
         {settingsOpen && <SettingsPanel tab={settingsTab} onTabChange={setSettingsTab} pageWidth={pageWidth} onPageWidthChange={setPageWidth} onClose={() => setRightSidebarOpen(false)} />}
       </div>
-      <Toast open={toastOpen} onOpenChange={setToastOpen} message="已复制到剪贴板" />
+      <Toast open={toastOpen} onOpenChange={setToastOpen} message={toastMessage} />
     </main>
   )
 }
