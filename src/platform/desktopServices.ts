@@ -1,7 +1,7 @@
 import Database from '@tauri-apps/plugin-sql'
 import { createSqliteArticleRepository, createSqliteAssetRepository, createSqliteVersionRepository } from '../features/storage/sqliteRepositories'
-import { extractWechatArticle } from '../features/wechat/wechatExtraction'
 import type { RuntimeServices } from './contracts'
+import { createDesktopImageFetcher, createDesktopWechatExtractor } from './desktopNetwork'
 
 export async function createDesktopServices(): Promise<RuntimeServices> {
   try {
@@ -11,7 +11,8 @@ export async function createDesktopServices(): Promise<RuntimeServices> {
       articleRepository: createSqliteArticleRepository(database),
       assetRepository: createSqliteAssetRepository(database),
       versionRepository: createSqliteVersionRepository(database),
-      extractWechatArticle,
+      extractWechatArticle: createDesktopWechatExtractor(),
+      imageFetcher: createDesktopImageFetcher(),
       databasePath: database.path,
     }
   } catch (reason) {

@@ -1,5 +1,7 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod network;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![Migration {
@@ -44,6 +46,10 @@ pub fn run() {
                 .add_migrations("sqlite:wechat-md.db", migrations)
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![
+            network::fetch_wechat_html,
+            network::fetch_remote_image
+        ])
         .run(tauri::generate_context!())
         .expect("error while running WeChat MD");
 }

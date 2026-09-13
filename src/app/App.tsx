@@ -440,7 +440,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const saveRemoteAsset = async (url: string, source: 'remote' | 'wechat') => {
     if (!imageRepository) throw new Error('当前环境无法保存图片')
     const asset = await fetchImageAsset(url, source, {
-      fetcher: async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`),
+      fetcher: services?.imageFetcher ?? (async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`)),
     })
     await imageRepository.save(asset)
     return asset

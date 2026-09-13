@@ -11,6 +11,6 @@ export function createWebServices(): RuntimeServices {
     assetRepository: createBrowserAssetRepository(),
     versionRepository: createBrowserVersionRepository(),
     extractWechatArticle,
+    imageFetcher: async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`),
   }
 }
-

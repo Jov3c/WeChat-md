@@ -10,6 +10,6 @@ export interface RuntimeServices {
   assetRepository: AssetRepository | null
   versionRepository: VersionRepository | null
   extractWechatArticle: (url: string) => Promise<ExtractedWechatArticle>
+  imageFetcher?: typeof fetch
   databasePath?: string
 }
-
