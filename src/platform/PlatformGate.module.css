@@ -1,0 +1,25 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: #faf9f5;
+  color: #141413;
+}
+
+.card {
+  width: min(420px, 100%);
+  padding: 32px;
+  border: 1px solid rgb(20 20 19 / 10%);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgb(20 20 19 / 8%);
+  text-align: center;
+}
+
+.mark { width: 42px; height: 42px; }
+.card h1 { margin: 18px 0 8px; font-size: 20px; }
+.card p { margin: 0; color: rgb(20 20 19 / 62%); line-height: 1.65; }
+.card code { display: block; margin: 18px 0; padding: 10px; border-radius: 10px; background: #f4f2ed; }
+.card button { min-width: 96px; height: 38px; border: 0; border-radius: 10px; background: #141413; color: #fff; cursor: pointer; }
+.loading { color: rgb(20 20 19 / 55%); }

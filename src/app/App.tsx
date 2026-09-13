@@ -26,6 +26,7 @@ import { createArticleVersion, shouldCreateAutomaticVersion, type ArticleVersion
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
 import { createVersionWriteQueue } from '../features/versions/versionWriteQueue'
 import { articles, type ArticleItem } from './demoData'
+import type { RuntimeServices } from '../platform/contracts'
 import styles from './App.module.css'
 
 let articleSequence = 0
@@ -52,6 +53,7 @@ type PendingWorkspaceAction =
   | { type: 'import'; file: File }
 
 export interface AppProps {
+  services?: RuntimeServices
   articleRepository?: ArticleRepository
   assetRepository?: AssetRepository
   versionRepository?: VersionRepository
@@ -59,10 +61,11 @@ export interface AppProps {
   wechatExtractor?: (url: string) => Promise<ExtractedWechatArticle>
 }
 
-export function App({ articleRepository, assetRepository, versionRepository, saveDelay = 5000, wechatExtractor = extractWechatArticle }: AppProps = {}) {
-  const repository = useMemo(() => articleRepository ?? createBrowserArticleRepository(), [articleRepository])
-  const imageRepository = useMemo(() => assetRepository ?? createBrowserAssetRepository(), [assetRepository])
-  const versionsRepository = useMemo(() => versionRepository ?? createBrowserVersionRepository(), [versionRepository])
+export function App({ services, articleRepository, assetRepository, versionRepository, saveDelay = 5000, wechatExtractor: wechatExtractorProp }: AppProps = {}) {
+  const repository = useMemo(() => services ? services.articleRepository : articleRepository ?? createBrowserArticleRepository(), [articleRepository, services])
+  const imageRepository = useMemo(() => services ? services.assetRepository : assetRepository ?? createBrowserAssetRepository(), [assetRepository, services])
+  const versionsRepository = useMemo(() => services ? services.versionRepository : versionRepository ?? createBrowserVersionRepository(), [services, versionRepository])
+  const wechatExtractor = services?.extractWechatArticle ?? wechatExtractorProp ?? extractWechatArticle
   const [articleList, setArticleList] = useState<ArticleItem[]>(() => articles.map((article) => ({ ...article })))
   const [selectedId, setSelectedId] = useState(articles[0].id)
   const [editorTab, setEditorTab] = useState('edit')

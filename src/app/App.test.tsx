@@ -6,6 +6,7 @@ import { createMemoryArticleRepository } from '../features/articles/articleRepos
 import { createMemoryAssetRepository } from '../features/assets/assetRepository'
 import { createMemoryVersionRepository } from '../features/versions/versionRepository'
 import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
+import type { RuntimeServices } from '../platform/contracts'
 import { App } from './App'
 
 describe('WeChat MD application shell', () => {
@@ -18,6 +19,22 @@ describe('WeChat MD application shell', () => {
       scrollTop: { configurable: true, writable: true, value: scrollTop },
     })
   }
+
+  it('uses repositories supplied by the initialized runtime', async () => {
+    const articleRepository = createMemoryArticleRepository({
+      articles: [{ id: 'desktop-1', title: '桌面数据库文章', date: '今天', content: '# 已恢复' }],
+      selectedId: 'desktop-1',
+    })
+    const services: RuntimeServices = {
+      kind: 'desktop', articleRepository,
+      assetRepository: createMemoryAssetRepository(), versionRepository: createMemoryVersionRepository(),
+      extractWechatArticle: async () => { throw new Error('not used') },
+    }
+
+    render(<App services={services} />)
+
+    expect(await screen.findByRole('button', { name: /^桌面数据库文章，/ })).toBeVisible()
+  })
 
   it('renders the four workspace regions beneath the application chrome', () => {
     render(<App />)
