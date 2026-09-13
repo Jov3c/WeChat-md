@@ -4,14 +4,15 @@ import { TitleBar } from './TitleBar'
 import { Toolbar } from './Toolbar'
 
 describe('application chrome', () => {
-  it('shows product identity and accessible window controls', () => {
+  it('shows the brand mark without fake browser window controls', () => {
     render(<TitleBar />)
 
+    expect(screen.getByRole('img', { name: 'WeChat MD 品牌图标' })).toBeVisible()
     expect(screen.getByText('WeChat MD Editor')).toBeVisible()
     expect(screen.getByText('专注于更好的公众号写作体验')).toBeVisible()
-    expect(screen.getByRole('button', { name: '最小化窗口' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '最大化窗口' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '关闭窗口' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '最小化窗口' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '最大化窗口' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '关闭窗口' })).not.toBeInTheDocument()
   })
 
   it('connects primary toolbar actions to application callbacks', async () => {
