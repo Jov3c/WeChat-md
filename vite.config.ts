@@ -32,6 +32,9 @@ function wechatExtractPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), wechatExtractPlugin()],
+  optimizeDeps: {
+    exclude: ['juice', 'juice/client'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

@@ -1,5 +1,5 @@
 import { load, type Cheerio, type CheerioAPI } from 'cheerio'
-import juice from 'juice'
+import juice from 'juice/client'
 import TurndownService from 'turndown'
 import { gfm } from 'turndown-plugin-gfm'
 import type { AnyNode } from 'domhandler'

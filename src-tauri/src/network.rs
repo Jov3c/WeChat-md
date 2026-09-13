@@ -209,7 +209,10 @@ pub async fn fetch_remote_image(input: String) -> Result<ImageResponse, String> 
 
 #[cfg(test)]
 mod tests {
-    use super::{extend_limited, fetch_wechat_html, validate_remote_url, validate_wechat_url};
+    use super::{
+        extend_limited, fetch_remote_image, fetch_wechat_html, validate_remote_url,
+        validate_wechat_url,
+    };
 
     #[test]
     fn accepts_only_the_real_wechat_https_origin() {
@@ -261,5 +264,15 @@ mod tests {
         .expect("public article should be fetchable");
         assert!(result.html.contains("js_content"));
         assert!(result.final_url.starts_with("https://mp.weixin.qq.com/"));
+
+        let marker = "data-src=\"http";
+        let start = result.html.find(marker).expect("article should contain an image") + 10;
+        let tail = &result.html[start..];
+        let end = tail.find('"').expect("image URL should close");
+        let image = fetch_remote_image(tail[..end].to_string())
+            .await
+            .expect("article image should be fetchable");
+        assert!(!image.bytes.is_empty());
+        assert!(image.mime_type.starts_with("image/"));
     }
 }
