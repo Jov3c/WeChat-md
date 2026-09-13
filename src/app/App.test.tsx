@@ -6,7 +6,7 @@ import { createMemoryArticleRepository } from '../features/articles/articleRepos
 import { createMemoryAssetRepository } from '../features/assets/assetRepository'
 import { createMemoryVersionRepository } from '../features/versions/versionRepository'
 import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
-import type { RuntimeServices } from '../platform/contracts'
+import type { FileService, RuntimeServices } from '../platform/contracts'
 import { App } from './App'
 
 describe('WeChat MD application shell', () => {
@@ -20,6 +20,22 @@ describe('WeChat MD application shell', () => {
     })
   }
 
+  const runtimeWithFiles = (files: FileService): RuntimeServices => ({
+    kind: 'desktop',
+    articleRepository: createMemoryArticleRepository(),
+    assetRepository: createMemoryAssetRepository(),
+    versionRepository: createMemoryVersionRepository(),
+    extractWechatArticle: async () => { throw new Error('not used') },
+    files,
+  })
+
+  const unusedFileService = (): FileService => ({
+    openText: async () => null,
+    openBytes: async () => null,
+    saveText: async () => 'cancelled',
+    saveBytes: async () => 'cancelled',
+  })
+
   it('uses repositories supplied by the initialized runtime', async () => {
     const articleRepository = createMemoryArticleRepository({
       articles: [{ id: 'desktop-1', title: '桌面数据库文章', date: '今天', content: '# 已恢复' }],
@@ -29,11 +45,63 @@ describe('WeChat MD application shell', () => {
       kind: 'desktop', articleRepository,
       assetRepository: createMemoryAssetRepository(), versionRepository: createMemoryVersionRepository(),
       extractWechatArticle: async () => { throw new Error('not used') },
+      files: unusedFileService(),
     }
 
     render(<App services={services} />)
 
     expect(await screen.findByRole('button', { name: /^桌面数据库文章，/ })).toBeVisible()
+  })
+
+  it('imports Markdown through the runtime file service', async () => {
+    const user = userEvent.setup()
+    const files: FileService = {
+      ...unusedFileService(),
+      openText: async () => ({ name: '原生导入.md', content: '# 原生文件内容' }),
+    }
+    render(<App services={runtimeWithFiles(files)} />)
+
+    await user.click(await screen.findByRole('button', { name: '导入 MD' }))
+
+    expect(await screen.findByRole('button', { name: /^原生导入，/ })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 原生文件内容')
+  })
+
+  it('exports exact Markdown data through the runtime file service', async () => {
+    const user = userEvent.setup()
+    let saved: Parameters<FileService['saveText']>[0] | undefined
+    const files: FileService = {
+      ...unusedFileService(),
+      saveText: async (file) => { saved = file; return 'saved' },
+    }
+    render(<App services={runtimeWithFiles(files)} />)
+    await screen.findByRole('button', { name: /^在本地运行大语言模型.*，/ })
+
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
+    await user.click(screen.getByRole('menuitem', { name: '导出 Markdown' }))
+
+    await waitFor(() => expect(saved).toEqual({
+      filename: '在本地运行大语言模型：Ollama 完全指南.md',
+      mimeType: 'text/markdown;charset=utf-8',
+      content: expect.stringContaining('# 在本地运行大语言模型：Ollama 完全指南'),
+    }))
+  })
+
+  it('silently cancels a workspace restore file dialog', async () => {
+    const user = userEvent.setup()
+    let openCount = 0
+    const files: FileService = {
+      ...unusedFileService(),
+      openBytes: async () => { openCount += 1; return null },
+    }
+    render(<App services={runtimeWithFiles(files)} />)
+    await screen.findByRole('button', { name: /^在本地运行大语言模型.*，/ })
+
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
+    await user.click(screen.getByRole('menuitem', { name: '恢复备份' }))
+
+    expect(openCount).toBe(1)
+    expect(screen.queryByText(/备份恢复失败|文件已损坏|不支持的备份/)).not.toBeInTheDocument()
   })
 
   it('renders the four workspace regions beneath the application chrome', () => {
@@ -237,7 +305,8 @@ describe('WeChat MD application shell', () => {
     await user.click(screen.getByRole('button', { name: '标题样式' }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'H1 字号' }), { target: { value: '40' } })
 
-    await user.upload(screen.getByLabelText('选择 Markdown 文件'), new File(['# 导入内容'], '外部文章.md', { type: 'text/markdown' }))
+    await user.click(screen.getByRole('button', { name: '导入 MD' }))
+    await user.upload(screen.getByLabelText('导入 Markdown'), new File(['# 导入内容'], '外部文章.md', { type: 'text/markdown' }))
     expect(screen.getByRole('dialog', { name: '未保存的风格修改' })).toBeVisible()
     expect(screen.queryByRole('button', { name: /^外部文章，/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '放弃并继续' }))
@@ -434,7 +503,8 @@ describe('WeChat MD application shell', () => {
     render(<App />)
     const file = new File(['# 导入成功\n\n文件正文'], '导入文章.md', { type: 'text/markdown' })
 
-    await user.upload(screen.getByLabelText('选择 Markdown 文件'), file)
+    await user.click(screen.getByRole('button', { name: '导入 MD' }))
+    await user.upload(screen.getByLabelText('导入 Markdown'), file)
 
     expect(await screen.findByRole('heading', { name: '导入成功' })).toBeVisible()
     expect(screen.getByRole('button', { name: /^导入文章，/ })).toBeVisible()

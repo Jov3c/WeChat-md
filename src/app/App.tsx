@@ -11,7 +11,7 @@ import { AssetLibraryDialog } from '../components/assets/AssetLibraryDialog'
 import { VersionHistoryDialog } from '../components/versions/VersionHistoryDialog'
 import { Button, Dialog, Input, Toast } from '../components/ui'
 import { copyPreviewArticle, makeImageSourcesPortable, serializePreviewArticle } from '../features/clipboard/richTextClipboard'
-import { createHtmlExport, createMarkdownExport, downloadTextExport } from '../features/export/articleExport'
+import { createHtmlExport, createMarkdownExport } from '../features/export/articleExport'
 import { createWorkspaceBackup, mergeWorkspaceBackup, readWorkspaceBackup } from '../features/backup/workspaceBackup'
 import { inspectPublication, type PublicationIssue } from '../features/publication/publicationPreflight'
 import { createBrowserArticleRepository, type ArticleRepository } from '../features/articles/articleRepository'
@@ -26,7 +26,8 @@ import { createArticleVersion, shouldCreateAutomaticVersion, type ArticleVersion
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
 import { createVersionWriteQueue } from '../features/versions/versionWriteQueue'
 import { articles, type ArticleItem } from './demoData'
-import type { RuntimeServices } from '../platform/contracts'
+import type { OpenedTextFile, RuntimeServices } from '../platform/contracts'
+import { createBrowserFileService } from '../platform/fileServices'
 import styles from './App.module.css'
 
 let articleSequence = 0
@@ -39,18 +40,9 @@ function createArticleId() {
   return `local-${Date.now()}-${articleSequence}`
 }
 
-function readFileText(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.addEventListener('load', () => resolve(String(reader.result ?? '')))
-    reader.addEventListener('error', () => reject(reader.error ?? new Error('无法读取文件')))
-    reader.readAsText(file)
-  })
-}
-
 type PendingWorkspaceAction =
   | { type: 'template'; templateId: string }
-  | { type: 'import'; file: File }
+  | { type: 'import'; file: OpenedTextFile }
 
 export interface AppProps {
   services?: RuntimeServices
@@ -66,6 +58,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const imageRepository = useMemo(() => services ? services.assetRepository : assetRepository ?? createBrowserAssetRepository(), [assetRepository, services])
   const versionsRepository = useMemo(() => services ? services.versionRepository : versionRepository ?? createBrowserVersionRepository(), [services, versionRepository])
   const wechatExtractor = services?.extractWechatArticle ?? wechatExtractorProp ?? extractWechatArticle
+  const files = useMemo(() => services?.files ?? createBrowserFileService(), [services])
   const [articleList, setArticleList] = useState<ArticleItem[]>(() => articles.map((article) => ({ ...article })))
   const [selectedId, setSelectedId] = useState(articles[0].id)
   const [editorTab, setEditorTab] = useState('edit')
@@ -750,17 +743,21 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setSaveStatus('saving')
   }
 
-  const importArticle = async (file: File) => {
+  const importArticle = async (file: OpenedTextFile) => {
+    const title = file.name.replace(/\.(?:md|markdown|txt)$/i, '') || '导入文章'
+    const article: ArticleItem = { id: createArticleId(), title, date: '刚刚', content: file.content, source: 'imported', status: 'draft', titleMode: 'manual' }
+    setArticleList((current) => [article, ...current])
+    setSelectedComponentText('')
+    setSelectedId(article.id)
+    setSaveStatus('saving')
+    setToastMessage('Markdown 已导入')
+    setToastOpen(true)
+  }
+
+  const openMarkdownArticle = async () => {
     try {
-      const markdown = await readFileText(file)
-      const title = file.name.replace(/\.(?:md|markdown|txt)$/i, '') || '导入文章'
-      const article: ArticleItem = { id: createArticleId(), title, date: '刚刚', content: markdown, source: 'imported', status: 'draft', titleMode: 'manual' }
-      setArticleList((current) => [article, ...current])
-      setSelectedComponentText('')
-      setSelectedId(article.id)
-      setSaveStatus('saving')
-      setToastMessage('Markdown 已导入')
-      setToastOpen(true)
+      const file = await files.openText({ title: '导入 Markdown', filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] })
+      if (file) requestWorkspaceAction({ type: 'import', file })
     } catch {
       setToastMessage('文件读取失败')
       setToastOpen(true)
@@ -853,11 +850,18 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     await performCopy()
   }
 
-  const exportMarkdown = () => {
+  const exportMarkdown = async () => {
     if (!selectedArticle) return
-    downloadTextExport(createMarkdownExport(selectedArticle.title, selectedArticle.content))
-    setToastMessage('Markdown 已导出')
-    setToastOpen(true)
+    try {
+      const result = await files.saveText(createMarkdownExport(selectedArticle.title, selectedArticle.content))
+      if (result === 'saved') {
+        setToastMessage('Markdown 已导出')
+        setToastOpen(true)
+      }
+    } catch {
+      setToastMessage('Markdown 导出失败，请稍后重试')
+      setToastOpen(true)
+    }
   }
 
   const exportHtml = async () => {
@@ -867,7 +871,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       const articleHtml = await makeImageSourcesPortable(serializePreviewArticle(previewArticleRef.current), async (source) => {
         if (/^https?:\/\//.test(source)) {
           try {
-            const response = await fetch(`/api/assets/fetch?url=${encodeURIComponent(source)}`)
+            const response = await (services?.imageFetcher ?? (async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`)))(source)
             if (!response.ok) throw new Error('图片下载失败')
             const blob = await response.blob()
             return await new Promise<string>((resolve, reject) => {
@@ -890,21 +894,13 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           reader.readAsDataURL(asset.blob)
         })
       })
-      downloadTextExport(createHtmlExport(selectedArticle.title, articleHtml))
+      const result = await files.saveText(createHtmlExport(selectedArticle.title, articleHtml))
+      if (result === 'cancelled') return
       setToastMessage(remoteImagesNotInlined ? `HTML 已导出，${remoteImagesNotInlined} 张远程图片保留网络地址` : '带排版和内联图片的 HTML 已导出')
     } catch {
       setToastMessage('HTML 导出失败，请稍后重试')
     }
     setToastOpen(true)
-  }
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   const backupWorkspace = async () => {
@@ -914,7 +910,12 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       const backup = await createWorkspaceBackup(latestSnapshotRef.current, await versionsRepository?.listAll() ?? [], storedAssets)
       const now = new Date()
       const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-      downloadBlob(backup, `WeChat-md-backup-${localDate}.wechatmd`)
+      const result = await files.saveBytes({
+        filename: `WeChat-md-backup-${localDate}.wechatmd`,
+        mimeType: backup.type,
+        bytes: new Uint8Array(await backup.arrayBuffer()),
+      })
+      if (result === 'cancelled') return
       setToastMessage('工作区备份已导出')
     } catch {
       setToastMessage('工作区备份失败，请稍后重试')
@@ -922,7 +923,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setToastOpen(true)
   }
 
-  const restoreWorkspaceBackup = async (file: File) => {
+  const restoreWorkspaceBackup = async (file: Blob) => {
     const savedAssetIds: string[] = []
     const importedArticleIds: string[] = []
     try {
@@ -957,6 +958,16 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setToastOpen(true)
   }
 
+  const openWorkspaceBackup = async () => {
+    try {
+      const file = await files.openBytes({ title: '恢复 WeChat MD 备份', filters: [{ name: 'WeChat MD 备份', extensions: ['wechatmd'] }] })
+      if (file) await restoreWorkspaceBackup(new Blob([file.bytes.slice().buffer], { type: 'application/x-wechatmd' }))
+    } catch (reason) {
+      setToastMessage(reason instanceof Error ? reason.message : '备份恢复失败')
+      setToastOpen(true)
+    }
+  }
+
   if (!storageReady) {
     return (
       <main className={styles.app}>
@@ -971,7 +982,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       <TitleBar />
       <Toolbar
         onNewArticle={() => requestWorkspaceAction({ type: 'template', templateId: 'blank' })}
-        onImport={(file) => requestWorkspaceAction({ type: 'import', file })}
+        onImport={() => { void openMarkdownArticle() }}
         onExtract={() => setWechatExtractOpen(true)}
         onCopy={copyArticle}
         saveStatus={saveStatus}
@@ -987,10 +998,10 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         onOpenPreviewSettings={openPageSettings}
         onManageAssets={openAssetLibrary}
         onOpenVersionHistory={() => openVersionHistory()}
-        onExportMarkdown={exportMarkdown}
+        onExportMarkdown={() => { void exportMarkdown() }}
         onExportHtml={() => { void exportHtml() }}
         onBackupWorkspace={() => { void backupWorkspace() }}
-        onRestoreBackup={(file) => { void restoreWorkspaceBackup(file) }}
+        onRestoreBackup={() => { void openWorkspaceBackup() }}
       />
       <div className={styles.workspace} role="region" aria-label="编辑工作区" data-settings-open={settingsOpen} data-editor-fullscreen={editorFullscreen}>
         <Sidebar

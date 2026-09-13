@@ -7,7 +7,6 @@ import {
   MoreHorizontal,
   Settings2,
 } from 'lucide-react'
-import { useRef } from 'react'
 import { builtInStylePresets, type StylePreset } from '../../features/styles/stylePresets'
 import { builtInTemplates, type ArticleTemplate } from '../../features/templates/templatePresets'
 import { Button, Divider, DropdownMenu, IconButton, Tooltip } from '../ui'
@@ -15,7 +14,7 @@ import styles from './AppChrome.module.css'
 
 export interface ToolbarProps {
   onNewArticle: () => void
-  onImport: (file: File) => void
+  onImport: () => void
   onExtract: () => void
   onCopy: () => void
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error'
@@ -34,7 +33,7 @@ export interface ToolbarProps {
   onExportMarkdown?: () => void
   onExportHtml?: () => void
   onBackupWorkspace?: () => void
-  onRestoreBackup?: (file: File) => void
+  onRestoreBackup?: () => void
 }
 
 function formatSaveStatus(saveStatus: ToolbarProps['saveStatus'], savedAt?: Date) {
@@ -70,8 +69,6 @@ export function Toolbar({
   onBackupWorkspace = () => undefined,
   onRestoreBackup = () => undefined,
 }: ToolbarProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const backupInputRef = useRef<HTMLInputElement>(null)
   const saveLabel = formatSaveStatus(saveStatus, savedAt)
   const styleItems = [...availableStyles.map((preset) => ({
     id: preset.id,
@@ -94,31 +91,7 @@ export function Toolbar({
         <Button className={styles.newButton} variant="primary" onClick={onNewArticle}>
           <FilePlus2 size={17} /> 新建文章
         </Button>
-        <Button onClick={() => fileInputRef.current?.click()}><FileInput size={16} /> 导入 MD</Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.markdown,text/markdown,text/plain"
-          aria-label="选择 Markdown 文件"
-          hidden
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            if (file) onImport(file)
-            event.currentTarget.value = ''
-          }}
-        />
-        <input
-          ref={backupInputRef}
-          type="file"
-          accept=".wechatmd,application/x-wechatmd,application/zip"
-          aria-label="选择 WeChat-md 备份"
-          hidden
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            if (file) onRestoreBackup(file)
-            event.currentTarget.value = ''
-          }}
-        />
+        <Button onClick={onImport}><FileInput size={16} /> 导入 MD</Button>
         <Button onClick={onExtract}><CheckCircle2 size={16} /> 提取公众号</Button>
         <Divider />
         <DropdownMenu
@@ -145,7 +118,7 @@ export function Toolbar({
             { id: 'export-markdown', label: '导出 Markdown', separatorBefore: true, onSelect: onExportMarkdown },
             { id: 'export-html', label: '导出 HTML', onSelect: onExportHtml },
             { id: 'backup-workspace', label: '备份工作区', separatorBefore: true, onSelect: onBackupWorkspace },
-            { id: 'restore-workspace', label: '恢复备份', onSelect: () => backupInputRef.current?.click() },
+            { id: 'restore-workspace', label: '恢复备份', onSelect: onRestoreBackup },
             { id: 'more-styles', label: '管理风格', onSelect: onManageStyles },
             { id: 'more-templates', label: '管理模板', onSelect: onManageTemplates },
           ]}

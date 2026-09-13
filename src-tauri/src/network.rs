@@ -79,9 +79,13 @@ fn extend_limited(body: &mut Vec<u8>, chunk: &[u8], limit: usize) -> Result<(), 
 async fn validate_resolved_target(url: &Url) -> Result<(), String> {
     let host = url.host_str().ok_or_else(|| "地址无效".to_string())?;
     if let Ok(ip) = host.trim_matches(['[', ']']).parse::<IpAddr>() {
-        return is_public_ip(ip).then_some(()).ok_or_else(|| "地址指向了不安全的网络".into());
+        return is_public_ip(ip)
+            .then_some(())
+            .ok_or_else(|| "地址指向了不安全的网络".into());
     }
-    let port = url.port_or_known_default().ok_or_else(|| "地址端口无效".to_string())?;
+    let port = url
+        .port_or_known_default()
+        .ok_or_else(|| "地址端口无效".to_string())?;
     let addresses: Vec<_> = lookup_host((host, port))
         .await
         .map_err(|_| "无法解析目标地址".to_string())?
@@ -109,11 +113,17 @@ fn redirect_target(response: &Response, current: &Url) -> Result<Option<Url>, St
         .get(header::LOCATION)
         .and_then(|value| value.to_str().ok())
         .ok_or_else(|| "跳转地址无效".to_string())?;
-    current.join(location).map(Some).map_err(|_| "跳转地址无效".into())
+    current
+        .join(location)
+        .map(Some)
+        .map_err(|_| "跳转地址无效".into())
 }
 
 async fn read_limited(response: Response, limit: usize) -> Result<Vec<u8>, String> {
-    if response.content_length().is_some_and(|size| size > limit as u64) {
+    if response
+        .content_length()
+        .is_some_and(|size| size > limit as u64)
+    {
         return Err("响应内容过大".into());
     }
     let mut body = Vec::new();
@@ -165,7 +175,10 @@ pub async fn fetch_wechat_html(input: String) -> Result<HtmlResponse, String> {
         }
         let bytes = read_limited(response, MAX_ARTICLE_BYTES).await?;
         let html = String::from_utf8(bytes).map_err(|_| "文章编码无法识别".to_string())?;
-        return Ok(HtmlResponse { html, final_url: url.to_string() });
+        return Ok(HtmlResponse {
+            html,
+            final_url: url.to_string(),
+        });
     }
     Err("暂时无法读取这篇文章".into())
 }
@@ -257,16 +270,19 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires a public WeChat article and network access"]
     async fn fetches_a_real_public_wechat_article() {
-        let result = fetch_wechat_html(
-            "https://mp.weixin.qq.com/s/BP-hmJmGUIHKY-epBk1okA".to_string(),
-        )
-        .await
-        .expect("public article should be fetchable");
+        let result =
+            fetch_wechat_html("https://mp.weixin.qq.com/s/BP-hmJmGUIHKY-epBk1okA".to_string())
+                .await
+                .expect("public article should be fetchable");
         assert!(result.html.contains("js_content"));
         assert!(result.final_url.starts_with("https://mp.weixin.qq.com/"));
 
         let marker = "data-src=\"http";
-        let start = result.html.find(marker).expect("article should contain an image") + 10;
+        let start = result
+            .html
+            .find(marker)
+            .expect("article should contain an image")
+            + 10;
         let tail = &result.html[start..];
         let end = tail.find('"').expect("image URL should close");
         let image = fetch_remote_image(tail[..end].to_string())

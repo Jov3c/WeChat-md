@@ -3,6 +3,7 @@ import { createBrowserAssetRepository } from '../features/assets/assetRepository
 import { extractWechatArticle } from '../features/wechat/wechatExtraction'
 import { createBrowserVersionRepository } from '../features/versions/versionRepository'
 import type { RuntimeServices } from './contracts'
+import { createBrowserFileService } from './fileServices'
 
 export function createWebServices(): RuntimeServices {
   return {
@@ -12,5 +13,6 @@ export function createWebServices(): RuntimeServices {
     versionRepository: createBrowserVersionRepository(),
     extractWechatArticle,
     imageFetcher: async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`),
+    files: createBrowserFileService(),
   }
 }

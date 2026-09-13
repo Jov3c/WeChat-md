@@ -11,6 +11,10 @@ function service(kind: RuntimeServices['kind']): RuntimeServices {
     extractWechatArticle: async () => {
       throw new Error('not used')
     },
+    files: {
+      openText: async () => null, openBytes: async () => null,
+      saveText: async () => 'cancelled', saveBytes: async () => 'cancelled',
+    },
   }
 }
 
