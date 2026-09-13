@@ -24,6 +24,7 @@ import { builtInContentComponents, createCustomContentComponent, type ContentCom
 import { applyExtractedStyle, extractWechatArticle, type ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
 import { createArticleVersion, shouldCreateAutomaticVersion, type ArticleVersion, type ArticleVersionReason } from '../features/versions/articleVersions'
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
+import { createVersionWriteQueue } from '../features/versions/versionWriteQueue'
 import { articles, type ArticleItem } from './demoData'
 import styles from './App.module.css'
 
@@ -109,7 +110,7 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
   const previewPanelRef = useRef<PreviewPanelHandle>(null)
   const latestSnapshotRef = useRef({ articles: articleList, selectedId, styles: [] as StylePreset[], templates: [] as ArticleTemplate[], components: [] as ContentComponent[], wechatArticleSavePolicy: wechatSavePolicy, syncEnabled })
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const versionSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const versionWriteQueueRef = useRef(createVersionWriteQueue())
   const versionBaselinesRef = useRef(new Map<string, ArticleVersion>(articles.map((article) => [article.id, {
     id: `baseline-${article.id}`, articleId: article.id, title: article.title, content: article.content, styleId: article.styleId,
     styleSnapshot: builtInStylePresets.find((style) => style.id === (article.styleId ?? 'default')), createdAt: new Date().toISOString(), reason: 'automatic' as const,
@@ -152,7 +153,7 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
 
   const createDueAutomaticVersions = (snapshot = latestSnapshotRef.current) => {
     if (!versionsRepository) return Promise.resolve()
-    const operation = versionSaveQueueRef.current.catch(() => undefined).then(async () => {
+    return versionWriteQueueRef.current.run(async () => {
       for (const article of snapshot.articles) {
         const state = { ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')) }
         const latest = (await versionsRepository.list(article.id))[0] ?? versionBaselinesRef.current.get(article.id)
@@ -163,8 +164,6 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
         }
       }
     })
-    versionSaveQueueRef.current = operation
-    return operation
   }
 
   useEffect(() => {
@@ -311,14 +310,12 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
   const saveVersionIfChanged = async (reason: ArticleVersionReason, article: ArticleItem) => {
     if (!versionsRepository || !article.content.trim()) return
     const state = { ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')) }
-    const operation = versionSaveQueueRef.current.catch(() => undefined).then(async () => {
+    return versionWriteQueueRef.current.run(async () => {
       const latest = (await versionsRepository.list(article.id))[0]
       if (latest?.title === state.title && latest.content === state.content && latest.styleId === state.styleId && JSON.stringify(latest.styleSnapshot) === JSON.stringify(state.styleSnapshot)) return
       await versionsRepository.save(createArticleVersion(article.id, state, reason))
       if (versionHistoryOpen && article.id === selectedId) setArticleVersions(await versionsRepository.list(article.id))
     })
-    versionSaveQueueRef.current = operation
-    return operation
   }
 
   const openVersionHistory = (articleId = selectedId) => {
@@ -330,10 +327,9 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
   const saveCurrentVersion = async () => {
     const article = articleList.find((item) => item.id === selectedId)
     if (!article || !versionsRepository) return
-    const operation = versionSaveQueueRef.current.catch(() => undefined).then(() => versionsRepository.save(createArticleVersion(article.id, {
+    const operation = versionWriteQueueRef.current.run(() => versionsRepository.save(createArticleVersion(article.id, {
       ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')),
     }, 'manual')))
-    versionSaveQueueRef.current = operation
     await operation
     setArticleVersions(await versionsRepository.list(article.id))
     setToastMessage('已保存当前版本')
@@ -746,7 +742,7 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
         setSelectedId(fallback.id)
       }
     }
-    void versionSaveQueueRef.current.catch(() => undefined).then(() => versionsRepository?.deleteForArticle(deletedId))
+    void versionWriteQueueRef.current.run(async () => { await versionsRepository?.deleteForArticle(deletedId) })
     setDeleteTarget(undefined)
     setSaveStatus('saving')
   }
@@ -934,10 +930,9 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
       })
       importedArticleIds.push(...merged.snapshot.articles.slice(0, imported.snapshot.articles.length).map(({ id }) => id))
       for (const asset of merged.assets) { await imageRepository?.save(asset); savedAssetIds.push(asset.id) }
-      const versionRestore = versionSaveQueueRef.current.catch(() => undefined).then(async () => {
+      const versionRestore = versionWriteQueueRef.current.run(async () => {
         for (const version of merged.versions) await versionsRepository?.save(version)
       })
-      versionSaveQueueRef.current = versionRestore
       await versionRestore
       await repository?.save(merged.snapshot)
       setArticleList(merged.snapshot.articles)
@@ -951,7 +946,9 @@ export function App({ articleRepository, assetRepository, versionRepository, sav
       setToastMessage(`已安全合并 ${imported.snapshot.articles.length} 篇文章和 ${imported.assets.length} 张图片`)
     } catch (reason) {
       await Promise.all(savedAssetIds.map((id) => imageRepository?.delete(id)))
-      await Promise.all(importedArticleIds.map((id) => versionsRepository?.deleteForArticle(id)))
+      await versionWriteQueueRef.current.run(async () => {
+        await Promise.all(importedArticleIds.map((id) => versionsRepository?.deleteForArticle(id)))
+      })
       setToastMessage(reason instanceof Error ? reason.message : '备份恢复失败')
     }
     setToastOpen(true)
