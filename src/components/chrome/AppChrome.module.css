@@ -109,6 +109,14 @@
   color: var(--text-secondary);
 }
 
+.saveStatus {
+  min-width: 82px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .toolbar :global(svg) {
   flex: none;
 }
@@ -137,4 +145,5 @@
   .toolbarGroup { gap: 9px; }
   .newButton { min-width: 114px; }
   .copyButton { min-width: 134px; }
+  .saveStatus { min-width: 68px; font-size: 10px; }
 }

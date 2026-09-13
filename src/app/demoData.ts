@@ -3,6 +3,15 @@ export interface ArticleItem {
   title: string
   date: string
   content: string
+  styleId?: string
+  favorite?: boolean
+  source?: 'local' | 'imported' | 'wechat'
+  status?: 'draft' | 'published' | 'trash'
+  titleMode?: 'auto' | 'manual'
+  author?: string
+  sourceUrl?: string
+  importedAt?: string
+  originalHtml?: string
 }
 
 export const ollamaMarkdown = `# 在本地运行大语言模型：Ollama 完全指南
@@ -34,7 +43,7 @@ brew install ollama
 
 export const articles: ArticleItem[] = [
   { id: 'ollama', title: '在本地运行大语言模型：Ollama 完全指南', date: '今天 15:42', content: ollamaMarkdown },
-  { id: 'ai-tools', title: 'AI 工具推荐清单', date: '2024-01-15', content: '# AI 工具推荐清单\n\n整理我日常使用的效率工具。' },
+  { id: 'ai-tools', title: 'AI 工具推荐清单', date: '2024-01-15', content: '# AI 工具推荐清单\n\n整理我日常使用的效率工具。', favorite: true },
   { id: 'markdown', title: '如何高效使用 Markdown', date: '2024-01-12', content: '# 如何高效使用 Markdown\n\n从结构开始，而不是从样式开始。' },
   { id: 'knowledge', title: '从 0 开始搭建个人知识库', date: '2024-01-10', content: '# 从 0 开始搭建个人知识库' },
   { id: 'chatgpt', title: 'ChatGPT 使用心得', date: '2024-01-08', content: '# ChatGPT 使用心得' },

@@ -1,6 +1,10 @@
 import { Monitor, MoreHorizontal, PanelRightOpen, Smartphone } from 'lucide-react'
-import { forwardRef, useEffect, useImperativeHandle, useRef, type MouseEvent, type Ref } from 'react'
-import { IconButton, ScrollArea } from '../ui'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type MouseEvent, type Ref } from 'react'
+import { createAnimatedScrollController } from '../../features/sync/animatedScroll'
+import { findTextRange } from '../../features/sync/textHighlight'
+import { stylePresetToAttributes, stylePresetToCssVariables } from '../../features/styles/stylePresentation'
+import { builtInStylePresets, type StylePreset } from '../../features/styles/stylePresets'
+import { DropdownMenu, IconButton, ScrollArea } from '../ui'
 import { MarkdownRenderer, type PreviewSelection } from './MarkdownRenderer'
 import styles from './PreviewPanel.module.css'
 
@@ -8,6 +12,7 @@ export type PreviewDevice = 'desktop' | 'mobile'
 
 export interface PreviewPanelHandle {
   setScrollRatio: (ratio: number) => void
+  resumeFollowing: () => void
 }
 
 export interface PreviewPanelProps {
@@ -22,6 +27,9 @@ export interface PreviewPanelProps {
   onScrollRatioChange?: (ratio: number) => void
   settingsOpen: boolean
   onShowSettings: () => void
+  onOpenPageSettings?: () => void
+  onCopy?: () => void
+  stylePreset?: StylePreset
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
@@ -29,33 +37,64 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
   else if (ref) ref.current = value
 }
 
+const selectionHighlightName = 'wechat-preview-selection'
+
+function highlightRegistry() {
+  return (globalThis.CSS as typeof CSS & {
+    highlights?: { set: (name: string, highlight: unknown) => void; delete: (name: string) => void }
+  } | undefined)?.highlights
+}
+
 export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(function PreviewPanel(
-  { markdown, articleRef, device, onDeviceChange, syncEnabled, selection, onSyncEnabledChange, onBlockActivate, onScrollRatioChange, settingsOpen, onShowSettings },
+  { markdown, articleRef, device, onDeviceChange, syncEnabled, selection, onSyncEnabledChange, onBlockActivate, onScrollRatioChange, settingsOpen, onShowSettings, onOpenPageSettings = onShowSettings, onCopy = () => undefined, stylePreset = builtInStylePresets[0] },
   ref,
 ) {
   const localArticleRef = useRef<HTMLElement | null>(null)
   const viewportRef = useRef<HTMLDivElement | null>(null)
-  const suppressScrollRef = useRef(false)
+  const scrollControllerRef = useRef<ReturnType<typeof createAnimatedScrollController> | null>(null)
+  scrollControllerRef.current ??= createAnimatedScrollController({
+    read: () => viewportRef.current?.scrollTop ?? 0,
+    write: (scrollTop) => { if (viewportRef.current) viewportRef.current.scrollTop = scrollTop },
+  })
+  const [cursorPulse, setCursorPulse] = useState(true)
 
   useImperativeHandle(ref, () => ({
     setScrollRatio(ratio) {
       const viewport = viewportRef.current
       if (!viewport) return
-      suppressScrollRef.current = true
-      viewport.scrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight) * ratio
-      requestAnimationFrame(() => { suppressScrollRef.current = false })
+      const maximum = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+      scrollControllerRef.current?.scrollTo(maximum * Math.min(1, Math.max(0, ratio)))
+    },
+    resumeFollowing() {
+      scrollControllerRef.current?.cancel()
     },
   }), [])
 
+  useEffect(() => () => scrollControllerRef.current?.cancel(), [])
+
   useEffect(() => {
-    if (!syncEnabled) return
-    const activeBlock = localArticleRef.current?.querySelector<HTMLElement>('[data-sync-active="true"]')
-    if (activeBlock) {
-      suppressScrollRef.current = true
-      activeBlock.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-      requestAnimationFrame(() => { suppressScrollRef.current = false })
+    if (!selection || selection.text) {
+      setCursorPulse(false)
+      return
     }
-  }, [selection?.startLine, syncEnabled])
+    setCursorPulse(true)
+    const timeout = window.setTimeout(() => setCursorPulse(false), 900)
+    return () => window.clearTimeout(timeout)
+  }, [selection?.startLine, selection?.endLine, selection?.text])
+
+  useEffect(() => {
+    const registry = highlightRegistry()
+    registry?.delete(selectionHighlightName)
+    if (!registry || !selection?.text || !localArticleRef.current) return
+    const selectedBlock = localArticleRef.current.querySelector<HTMLElement>('[data-selection-active=\"true\"]')
+    const range = findTextRange(selectedBlock ?? localArticleRef.current, selection.text)
+    const HighlightConstructor = (globalThis as typeof globalThis & {
+      Highlight?: new (...ranges: Range[]) => unknown
+    }).Highlight
+    if (!range || !HighlightConstructor) return
+    registry.set(selectionHighlightName, new HighlightConstructor(range))
+    return () => { registry.delete(selectionHighlightName) }
+  }, [markdown, selection?.startLine, selection?.endLine, selection?.text])
 
   const activateBlock = (event: MouseEvent<HTMLElement>) => {
     const target = (event.target as Element).closest<HTMLElement>('[data-source-start]')
@@ -65,9 +104,9 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
 
   const reportScroll = () => {
     const viewport = viewportRef.current
-    if (!viewport || suppressScrollRef.current) return
-    const scrollRange = viewport.scrollHeight - viewport.clientHeight
-    onScrollRatioChange?.(scrollRange > 0 ? viewport.scrollTop / scrollRange : 0)
+    if (!viewport || scrollControllerRef.current?.isFollowing()) return
+    const maximum = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+    onScrollRatioChange?.(maximum ? viewport.scrollTop / maximum : 0)
   }
 
   return (
@@ -83,17 +122,38 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
           {!settingsOpen && <IconButton label="显示右侧边栏" onClick={onShowSettings}><PanelRightOpen size={16} /></IconButton>}
           <IconButton label="桌面预览" data-active={device === 'desktop'} onClick={() => onDeviceChange('desktop')}><Monitor size={16} /></IconButton>
           <IconButton label="手机预览" data-active={device === 'mobile'} onClick={() => onDeviceChange('mobile')}><Smartphone size={16} /></IconButton>
-          <IconButton label="预览更多操作"><MoreHorizontal size={18} /></IconButton>
+          <DropdownMenu
+            trigger={<IconButton label="预览更多操作"><MoreHorizontal size={18} /></IconButton>}
+            items={[
+              { id: 'preview-page-settings', label: '页面设置', onSelect: onOpenPageSettings },
+              { id: 'preview-copy', label: '复制到公众号', onSelect: onCopy },
+            ]}
+          />
         </div>
       </header>
       <div className={styles.canvas}>
-        <ScrollArea viewportProps={{ ref: viewportRef, role: 'region', 'aria-label': '预览滚动区域', onScroll: reportScroll }}>
+        <ScrollArea viewportProps={{
+          ref: viewportRef,
+          role: 'region',
+          'aria-label': '预览滚动区域',
+          onScroll: reportScroll,
+          onWheel: () => scrollControllerRef.current?.cancel(),
+          onPointerDown: () => scrollControllerRef.current?.cancel(),
+          onTouchStart: () => scrollControllerRef.current?.cancel(),
+        }}>
           <article
             ref={(node) => { localArticleRef.current = node; assignRef(articleRef, node) }}
             className={styles.article}
+            data-exact-selection={Boolean(highlightRegistry())}
             onClick={activateBlock}
+            style={stylePresetToCssVariables(stylePreset) as CSSProperties}
+            {...stylePresetToAttributes(stylePreset)}
           >
-            <MarkdownRenderer markdown={markdown} selection={selection} />
+            <MarkdownRenderer markdown={markdown} selection={selection?.text || cursorPulse ? selection : undefined} numbering={{
+              h1: stylePreset.headings.h1.numbered,
+              h2: stylePreset.headings.h2.numbered,
+              h3: stylePreset.headings.h3.numbered,
+            }} />
           </article>
         </ScrollArea>
       </div>

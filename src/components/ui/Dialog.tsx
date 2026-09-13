@@ -8,14 +8,15 @@ export interface DialogProps {
   onOpenChange: (open: boolean) => void
   title: string
   children: ReactNode
+  contentClassName?: string
 }
 
-export function Dialog({ open, onOpenChange, title, children }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, children, contentClassName = '' }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={styles.dialogOverlay} />
-        <DialogPrimitive.Content className={styles.dialogContent}>
+        <DialogPrimitive.Content className={`${styles.dialogContent} ${contentClassName}`.trim()}>
           <header className={styles.dialogHeader}>
             <DialogPrimitive.Title className={styles.dialogTitle}>{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close className={styles.dialogClose} aria-label="关闭">

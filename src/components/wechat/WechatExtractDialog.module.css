@@ -1,0 +1,43 @@
+.dialog { width: min(520px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: hidden; }
+.body { min-height: 176px; max-height: calc(100vh - 132px); overflow-y: auto; color: var(--text-primary); }
+.inputStep, .resultStep, .saveQuestion { display: grid; gap: 16px; }
+.intro { display: flex; gap: 11px; padding: 13px 14px; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-soft); color: var(--text-primary); }
+.intro > svg { flex: none; margin-top: 1px; color: var(--text-primary); }
+.intro strong, .articleSummary strong, .resultSection strong { font-size: 13px; }
+.intro p, .articleSummary p, .saveQuestion p { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.55; }
+.field { display: grid; gap: 7px; color: var(--text-secondary); font-size: 12px; }
+.privacy { margin: -5px 0 0; color: var(--text-muted); font-size: 11px; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.error { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border-radius: var(--radius-sm); background: #f7efec; color: #8f3829; font-size: 12px; }
+.error button, .sectionHeader button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.spinner { animation: spin 700ms linear infinite; }
+.saveQuestion { grid-template-columns: 34px 1fr; }
+.successIcon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: #eef3e9; color: #4f6842; }
+.saveQuestion h3 { margin: 2px 0 0; font-size: 15px; }
+.checkRow { display: flex; grid-column: 2; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+.saveQuestion .actions { grid-column: 1 / -1; }
+.articleSummary { display: grid; grid-template-columns: 38px 1fr 30px; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border-light); }
+.articleMark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 10px; background: #141413; color: #fff; font-size: 13px; }
+.articleSummary a { display: grid; width: 30px; height: 30px; place-items: center; border-radius: var(--radius-sm); color: var(--text-muted); }
+.articleSummary a:hover { background: var(--bg-hover); color: var(--text-primary); }
+.resultSection { display: grid; gap: 9px; }
+.sectionHeader { display: flex; align-items: end; justify-content: space-between; }
+.sectionHeader > div { display: grid; gap: 2px; }
+.sectionHeader span { color: var(--text-muted); font-size: 11px; }
+.sectionHeader button { color: var(--text-secondary); font-size: 11px; }
+.tokenGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.token { display: grid; min-width: 0; grid-template-columns: 18px auto 1fr; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-panel); cursor: pointer; transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), opacity 160ms var(--ease-out); }
+.token[data-checked='false'] { opacity: .58; }
+.token[data-checked='true'] { border-color: #cac7bd; background: #faf9f5; }
+.token i { width: 13px; height: 13px; border: 1px solid rgba(20,20,19,.12); border-radius: 50%; }
+.token span { display: flex; min-width: 0; justify-content: space-between; gap: 8px; }
+.token small { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.token strong { font-size: 11px; font-weight: 500; white-space: nowrap; }
+.componentList { display: flex; flex-wrap: wrap; gap: 6px; }
+.componentList span { padding: 5px 8px; border-radius: 999px; background: var(--bg-soft); color: var(--text-secondary); font-size: 11px; }
+.empty { grid-column: 1 / -1; margin: 0; padding: 10px; color: var(--text-muted); font-size: 12px; text-align: center; }
+.saveStyleRow { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; padding: 10px; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-soft); }
+.resultActions { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 7px; padding-top: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 560px) { .tokenGrid { grid-template-columns: 1fr; } .resultActions { display: flex; flex-wrap: wrap; } .resultActions > span { display: none; } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1400ms; } .token { transition: opacity 120ms ease; } }

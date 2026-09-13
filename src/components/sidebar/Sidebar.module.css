@@ -42,12 +42,21 @@
 .articleArea { min-height: 0; flex: 1; overflow: hidden; }
 .articleList { padding: 0 15px 16px; }
 
-.article {
+.articleRow {
   position: relative;
-  display: flex;
+  display: grid;
   width: 100%;
   min-width: 0;
   height: 55px;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.article {
+  display: flex;
+  min-width: 0;
+  height: 100%;
   flex-direction: column;
   justify-content: center;
   gap: 5px;
@@ -60,9 +69,9 @@
   cursor: pointer;
 }
 
-.article:hover { background: var(--bg-hover); }
-.article[data-selected='true'] { background: var(--bg-selected); }
-.article[data-selected='true']::before {
+.articleRow:hover { background: var(--bg-hover); }
+.articleRow[data-selected='true'] { background: var(--bg-selected); }
+.articleRow[data-selected='true']::before {
   position: absolute;
   top: 8px;
   bottom: 8px;
@@ -74,7 +83,11 @@
 }
 
 .articleTitle {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
   overflow: hidden;
   color: var(--text-body);
   font-size: 13px;
@@ -82,6 +95,24 @@
   white-space: nowrap;
 }
 .articleDate { color: var(--text-muted); font-size: 12px; }
+
+.empty {
+  margin: 24px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.articleTitle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.articleTitle svg { flex: none; color: var(--accent-button); }
+
+.articleMenu {
+  width: 26px;
+  height: 26px;
+  opacity: 0;
+}
+.articleRow:hover .articleMenu,
+.articleMenu:focus-visible,
+.articleMenu[data-state='open'] { opacity: 1; }
 
 .settings {
   display: flex;
@@ -103,8 +134,9 @@
   .navItem { height: 31px; grid-template-columns: 20px 1fr auto; padding-inline: 10px; font-size: 12px; }
   .sectionLabel { padding: 15px 19px 7px; font-size: 11px; }
   .articleList { padding: 0 12px 12px; }
-  .article { height: 44px; gap: 3px; padding-left: 16px; }
-  .article[data-selected='true']::before { top: 7px; bottom: 7px; }
+  .articleRow { height: 44px; }
+  .article { gap: 3px; padding-left: 16px; }
+  .articleRow[data-selected='true']::before { top: 7px; bottom: 7px; }
   .articleTitle { font-size: 11px; }
   .articleDate, .count { font-size: 10px; }
   .settings { height: 44px; flex: none; padding-inline: 21px; font-size: 12px; }

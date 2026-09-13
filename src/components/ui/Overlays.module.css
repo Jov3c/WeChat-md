@@ -51,6 +51,7 @@
   background: rgba(29, 44, 66, 0.18);
   backdrop-filter: blur(2px);
 }
+.menuItemSeparated { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border); }
 .dialogOverlay[data-state='open'] { animation: fadeIn 180ms var(--ease-out); }
 .dialogOverlay[data-state='closed'] { animation: fadeOut 120ms var(--ease-out); }
 

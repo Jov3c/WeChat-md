@@ -1,4 +1,5 @@
 .app { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-app); color: var(--text-primary); }
+.loading { display: grid; height: calc(100vh - var(--titlebar-height)); place-items: center; color: var(--text-muted); font-size: 13px; }
 .workspace {
   --workspace-sidebar-width: var(--sidebar-width);
   display: grid;
@@ -39,6 +40,15 @@
 .workspace[data-settings-open='false'] {
   grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr) minmax(0, 1.02fr) 0;
 }
+
+.workspace[data-editor-fullscreen='true'] {
+  grid-template-columns: 0 minmax(0, 1fr) 0 0;
+}
+
+.draftDialogBody { display: grid; gap: 18px; }
+.draftDialogBody p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
+.draftDialogBody label { display: grid; gap: 7px; color: var(--text-secondary); font-size: 12px; }
+.draftDialogBody > div { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .workspace { transition: none; }

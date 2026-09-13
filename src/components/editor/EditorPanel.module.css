@@ -44,6 +44,36 @@
 }
 .textarea::selection { background: var(--sync-highlight); color: var(--text-primary); }
 
+.outline {
+  height: calc(100% - var(--panel-header-height));
+  padding: 14px 16px 28px;
+  overflow-y: auto;
+}
+.outline button {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-body);
+  text-align: left;
+  cursor: pointer;
+}
+.outline button:hover { background: var(--bg-hover); }
+.outline button[data-level='2'] { padding-left: 26px; }
+.outline button[data-level='3'] { padding-left: 42px; }
+.outline button[data-level='4'],
+.outline button[data-level='5'],
+.outline button[data-level='6'] { padding-left: 58px; }
+.outline button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.outline button small { flex: none; color: var(--text-muted); font-size: 11px; }
+.outline p { margin: 30px 12px; color: var(--text-muted); font-size: 12px; line-height: 1.7; text-align: center; }
+
 @media (max-height: 1000px) {
   .header { padding: 0 13px 0 27px; }
   .meta { gap: 9px; font-size: 10px; }
@@ -51,4 +81,6 @@
   .editorBody { grid-template-columns: 39px minmax(0, 1fr); }
   .lineNumbers { padding: 12px 9px 16px 0; font-size: 11px; line-height: 23px; }
   .textarea { padding: 12px 18px 32px 16px; font-size: 12px; line-height: 23px; }
+  .outline { padding: 10px 12px 22px; }
+  .outline button { min-height: 32px; font-size: 12px; }
 }

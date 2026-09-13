@@ -6,6 +6,7 @@ export interface DropdownItem {
   id: string
   label: string
   onSelect: () => void
+  separatorBefore?: boolean
 }
 
 export interface DropdownMenuProps {
@@ -20,13 +21,14 @@ export function DropdownMenu({ trigger, items }: DropdownMenuProps) {
       <DropdownMenuPrimitive.Portal>
         <DropdownMenuPrimitive.Content className={styles.menuContent} sideOffset={6} align="start">
           {items.map((item) => (
+            <div className={item.separatorBefore ? styles.menuItemSeparated : undefined} key={item.id}>
             <DropdownMenuPrimitive.Item
-              key={item.id}
               className={styles.menuItem}
               onSelect={item.onSelect}
             >
               {item.label}
             </DropdownMenuPrimitive.Item>
+            </div>
           ))}
         </DropdownMenuPrimitive.Content>
       </DropdownMenuPrimitive.Portal>
