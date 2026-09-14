@@ -9,6 +9,7 @@ export interface StoredArticle {
   date: string
   content: string
   styleId?: string
+  templateId?: string
   favorite?: boolean
   source?: 'local' | 'imported' | 'wechat'
   status?: 'draft' | 'published' | 'trash'

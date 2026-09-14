@@ -4,6 +4,7 @@ import { createAnimatedScrollController } from '../../features/sync/animatedScro
 import { findTextRange } from '../../features/sync/textHighlight'
 import { stylePresetToAttributes, stylePresetToCssVariables } from '../../features/styles/stylePresentation'
 import { builtInStylePresets, type StylePreset } from '../../features/styles/stylePresets'
+import type { ArticleTemplateLayout } from '../../features/templates/templatePresets'
 import { DropdownMenu, IconButton, ScrollArea } from '../ui'
 import { MarkdownRenderer, type PreviewSelection } from './MarkdownRenderer'
 import styles from './PreviewPanel.module.css'
@@ -30,6 +31,7 @@ export interface PreviewPanelProps {
   onOpenPageSettings?: () => void
   onCopy?: () => void
   stylePreset?: StylePreset
+  templateLayout?: ArticleTemplateLayout
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
@@ -46,7 +48,7 @@ function highlightRegistry() {
 }
 
 export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(function PreviewPanel(
-  { markdown, articleRef, device, onDeviceChange, syncEnabled, selection, onSyncEnabledChange, onBlockActivate, onScrollRatioChange, settingsOpen, onShowSettings, onOpenPageSettings = onShowSettings, onCopy = () => undefined, stylePreset = builtInStylePresets[0] },
+  { markdown, articleRef, device, onDeviceChange, syncEnabled, selection, onSyncEnabledChange, onBlockActivate, onScrollRatioChange, settingsOpen, onShowSettings, onOpenPageSettings = onShowSettings, onCopy = () => undefined, stylePreset = builtInStylePresets[0], templateLayout = 'standard' },
   ref,
 ) {
   const localArticleRef = useRef<HTMLElement | null>(null)
@@ -145,6 +147,7 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
             ref={(node) => { localArticleRef.current = node; assignRef(articleRef, node) }}
             className={styles.article}
             data-exact-selection={Boolean(highlightRegistry())}
+            data-template-layout={templateLayout}
             onClick={activateBlock}
             style={stylePresetToCssVariables(stylePreset) as CSSProperties}
             {...stylePresetToAttributes(stylePreset)}

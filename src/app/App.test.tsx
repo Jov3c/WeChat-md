@@ -9,6 +9,23 @@ import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction
 import type { FileService, RuntimeServices } from '../platform/contracts'
 import { App } from './App'
 
+vi.mock('./demoData', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./demoData')>()
+  return {
+    ...actual,
+    articles: [
+      actual.articles[0],
+      { id: 'ai-tools', title: 'AI 工具推荐清单', date: '2024-01-15', content: '# AI 工具推荐清单\n\n整理我日常使用的效率工具。', favorite: true },
+      { id: 'markdown', title: '如何高效使用 Markdown', date: '2024-01-12', content: '# 如何高效使用 Markdown\n\n从结构开始，而不是从样式开始。' },
+      { id: 'knowledge', title: '从 0 开始搭建个人知识库', date: '2024-01-10', content: '# 从 0 开始搭建个人知识库' },
+      { id: 'chatgpt', title: 'ChatGPT 使用心得', date: '2024-01-08', content: '# ChatGPT 使用心得' },
+      { id: 'annual', title: '我的年度总结', date: '2024-01-05', content: '# 我的年度总结' },
+      { id: 'efficiency', title: '好用的效率工具', date: '2024-01-03', content: '# 好用的效率工具' },
+      { id: 'layout', title: '微信公众号排版技巧', date: '2024-01-01', content: '# 微信公众号排版技巧' },
+    ],
+  }
+})
+
 describe('WeChat MD application shell', () => {
   afterEach(() => vi.unstubAllGlobals())
 
@@ -231,33 +248,42 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByRole('button', { name: /^自动识别的标题，/ })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('creates a tutorial article from the toolbar template menu', async () => {
+  it('applies a tutorial layout without changing the article content or article count', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    const { container } = render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const originalContent = editor.value
+    const originalArticleCount = screen.getAllByRole('button', { name: /，/ }).length
 
     await user.click(screen.getByRole('button', { name: '模板' }))
     await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
 
-    expect((screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement).value).toContain('# 教程文章')
-    expect(screen.getByRole('button', { name: /^教程文章，/ })).toHaveAttribute('aria-current', 'page')
+    expect(editor.value).toBe(originalContent)
+    expect(screen.getAllByRole('button', { name: /，/ })).toHaveLength(originalArticleCount)
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
   })
 
-  it('creates an article from the information-to-action preset', async () => {
+  it('applies an information layout without creating another article', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    const { container } = render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const originalContent = editor.value
 
     await user.click(screen.getByRole('button', { name: '模板' }))
-    await user.click(screen.getByRole('menuitem', { name: '信息到行动' }))
+    await user.click(screen.getByRole('menuitem', { name: '资讯文章' }))
 
-    expect((screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement).value)
-      .toContain('# 把一条信息变成行动')
+    expect(editor.value).toBe(originalContent)
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'information')
   })
 
-  it('saves the current article as a custom template and creates from it', async () => {
+  it('saves the current article layout as a custom template and reapplies it without replacing content', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    const { container } = render(<App />)
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
     fireEvent.change(editor, { target: { value: '# 我的固定结构\n\n## 第一部分' } })
+
+    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('menuitem', { name: '新闻报道' }))
 
     await user.click(screen.getByRole('button', { name: '模板' }))
     await user.click(screen.getByRole('menuitem', { name: '保存当前为模板' }))
@@ -266,9 +292,13 @@ describe('WeChat MD application shell', () => {
     await user.click(dialog.getByRole('button', { name: '保存模板' }))
 
     await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
+
+    await user.click(screen.getByRole('button', { name: '模板' }))
     await user.click(screen.getByRole('menuitem', { name: '我的长文模板' }))
     expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 我的固定结构\n\n## 第一部分')
-    expect(screen.getByRole('button', { name: /^我的固定结构，/ })).toHaveAttribute('aria-current', 'page')
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'news')
   })
 
   it('renames and deletes a custom template from the template library', async () => {

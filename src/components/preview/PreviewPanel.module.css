@@ -60,6 +60,27 @@
 .article th { background: var(--article-table-header, var(--bg-soft)); color: var(--article-text); font-weight: 600; }
 .article del { color: var(--text-muted); }
 .article input[type='checkbox'] { margin-right: 7px; accent-color: var(--accent-button); }
+
+.article[data-template-layout='tutorial'] h2 { padding: 10px 14px; border-left: 4px solid var(--article-accent); background: color-mix(in srgb, var(--article-accent) 8%, var(--article-background)); }
+.article[data-template-layout='tutorial'] h3 { border-bottom: 1px dashed color-mix(in srgb, var(--article-accent) 35%, transparent); background: transparent; }
+.article[data-template-layout='tutorial'] blockquote { border: 1px solid color-mix(in srgb, var(--article-accent) 28%, transparent); border-left-width: 4px; }
+
+.article[data-template-layout='news'] h1 { padding-bottom: 18px; border-bottom: 2px solid var(--article-accent); text-align: left; }
+.article[data-template-layout='news'] h1 + p { padding-bottom: 18px; border-bottom: 1px solid var(--article-divider-color); }
+.article[data-template-layout='news'] h2 { padding-bottom: 8px; border-bottom: 1px solid var(--article-h2-border); background: transparent; }
+
+.article[data-template-layout='information'] h2 { padding: 8px 12px; border-top: 2px solid var(--article-accent); border-bottom: 1px solid var(--article-h2-border); background: color-mix(in srgb, var(--article-accent) 6%, var(--article-background)); }
+.article[data-template-layout='information'] ul,
+.article[data-template-layout='information'] ol { padding-top: 12px; padding-bottom: 4px; border: 1px solid var(--article-table-border); border-radius: var(--article-table-radius); }
+
+.article[data-template-layout='share'] h1 { text-align: center; }
+.article[data-template-layout='share'] h1::after { display: block; width: 42px; height: 2px; margin: 18px auto 0; background: var(--article-accent); content: ''; }
+.article[data-template-layout='share'] blockquote { margin-right: 7%; margin-left: 7%; border: 0; text-align: center; }
+.article[data-template-layout='share'] hr { width: 36%; margin-right: auto; margin-left: auto; }
+
+.article[data-template-layout='product'] h1 { padding: 20px; border: 1px solid var(--article-h1-border); background: color-mix(in srgb, var(--article-accent) 8%, var(--article-background)); text-align: center; }
+.article[data-template-layout='product'] h2 { padding: 10px 14px; border-radius: var(--article-h2-radius); background: color-mix(in srgb, var(--article-accent) 10%, var(--article-background)); }
+.article[data-template-layout='product'] ul { padding: 16px 16px 10px 36px; border: 1px solid var(--article-table-border); border-radius: var(--article-table-radius); }
 .empty { color: var(--text-muted); }
 .panel[data-device='mobile'] .article { max-width: 375px; box-shadow: 0 8px 30px rgba(20, 20, 19, 0.08); }
 

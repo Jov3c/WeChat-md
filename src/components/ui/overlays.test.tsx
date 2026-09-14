@@ -14,6 +14,7 @@ describe('overlay and feedback controls', () => {
     )
 
     await user.click(screen.getByRole('button', { name: '模板' }))
+    expect(screen.getByRole('menu')).toHaveStyle({ maxHeight: 'calc(100vh - 24px)', overflowY: 'auto' })
     const item = screen.getByRole('menuitem', { name: '空白文章' })
     expect(item).toBeVisible()
     await user.click(item)

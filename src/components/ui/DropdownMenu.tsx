@@ -19,7 +19,12 @@ export function DropdownMenu({ trigger, items }: DropdownMenuProps) {
     <DropdownMenuPrimitive.Root>
       <DropdownMenuPrimitive.Trigger asChild>{trigger}</DropdownMenuPrimitive.Trigger>
       <DropdownMenuPrimitive.Portal>
-        <DropdownMenuPrimitive.Content className={styles.menuContent} sideOffset={6} align="start">
+        <DropdownMenuPrimitive.Content
+          className={styles.menuContent}
+          sideOffset={6}
+          align="start"
+          style={{ maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+        >
           {items.map((item) => (
             <div className={item.separatorBefore ? styles.menuItemSeparated : undefined} key={item.id}>
             <DropdownMenuPrimitive.Item

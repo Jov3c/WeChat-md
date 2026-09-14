@@ -41,7 +41,7 @@ function createArticleId() {
 }
 
 type PendingWorkspaceAction =
-  | { type: 'template'; templateId: string }
+  | { type: 'new' }
   | { type: 'import'; file: OpenedTextFile }
 
 export interface AppProps {
@@ -119,6 +119,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const previewMarkdown = useMemo(() => replaceImageAssetUrls(content, assetUrls), [assetUrls, content])
   const activeStyleId = selectedArticle?.styleId ?? 'default'
   const activeStyle = stylePresets.find((preset) => preset.id === activeStyleId) ?? builtInStylePresets[0]
+  const activeTemplate = templates.find((template) => template.id === selectedArticle?.templateId) ?? builtInTemplates[0]
   const previewStyle = styleDraft ?? activeStyle
   latestSnapshotRef.current = {
     articles: articleList,
@@ -584,15 +585,13 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setToastOpen(true)
   }
 
-  function createArticleFromTemplate(templateId: string) {
-    const template = templates.find((item) => item.id === templateId)
-    if (!template) return
-    const heading = /^#\s+(.+?)\s*$/m.exec(template.content)?.[1]?.replace(/\s+#+$/, '')
+  function createBlankArticle() {
     const article: ArticleItem = {
       id: createArticleId(),
-      title: heading || (template.id === 'blank' ? '未命名文章' : template.name),
+      title: '未命名文章',
       date: '刚刚',
-      content: template.content,
+      content: '',
+      templateId: 'blank',
       source: 'local',
       status: 'draft',
       titleMode: 'auto',
@@ -601,6 +600,17 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setSelectedComponentText('')
     setSelectedId(article.id)
     setSaveStatus('saving')
+  }
+
+  function applyTemplateToCurrentArticle(templateId: string) {
+    const template = templates.find((item) => item.id === templateId)
+    if (!template || !selectedArticle) return
+    setArticleList((current) => current.map((article) => article.id === selectedId
+      ? { ...article, templateId: template.id, date: '刚刚' }
+      : article))
+    setSaveStatus('saving')
+    setToastMessage(`已应用“${template.name}”`)
+    setToastOpen(true)
   }
 
   function requestWorkspaceAction(action: PendingWorkspaceAction) {
@@ -617,7 +627,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
 
   async function performWorkspaceAction(action: PendingWorkspaceAction) {
     if (action.type === 'import') await importArticle(action.file)
-    else createArticleFromTemplate(action.templateId)
+    else createBlankArticle()
   }
 
   const openSaveTemplate = () => {
@@ -629,7 +639,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     const name = templateName.trim()
     if (!name) return
     templateSequence += 1
-    const template = createCustomTemplate(`template-${Date.now()}-${templateSequence}`, name, content)
+    const template = createCustomTemplate(`template-${Date.now()}-${templateSequence}`, name, content, activeTemplate.layout ?? 'standard')
     setTemplates((current) => [...current, template])
     setSaveTemplateOpen(false)
     setSaveStatus('saving')
@@ -981,7 +991,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     <main className={styles.app}>
       <TitleBar />
       <Toolbar
-        onNewArticle={() => requestWorkspaceAction({ type: 'template', templateId: 'blank' })}
+        onNewArticle={() => requestWorkspaceAction({ type: 'new' })}
         onImport={() => { void openMarkdownArticle() }}
         onExtract={() => setWechatExtractOpen(true)}
         onCopy={copyArticle}
@@ -992,7 +1002,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         onStyleSelect={requestStyleApplication}
         onManageStyles={openStyleLibrary}
         templates={templates}
-        onTemplateSelect={(templateId) => requestWorkspaceAction({ type: 'template', templateId })}
+        onTemplateSelect={applyTemplateToCurrentArticle}
         onSaveCurrentTemplate={openSaveTemplate}
         onManageTemplates={() => setTemplateLibraryOpen(true)}
         onOpenPreviewSettings={openPageSettings}
@@ -1051,6 +1061,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           onOpenPageSettings={openPageSettings}
           onCopy={() => { void copyArticle() }}
           stylePreset={previewStyle}
+          templateLayout={activeTemplate.layout ?? 'standard'}
         />
         <SettingsPanel
           open={settingsOpen}
@@ -1083,7 +1094,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       </div>
       <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen} title="保存为模板">
         <div className={styles.draftDialogBody}>
-          <p>保存当前文章结构，之后可从顶部“模板”菜单快速新建文章。</p>
+          <p>保存当前文章排版，之后可从顶部“模板”菜单应用到任意文章。</p>
           <label><span>模板名称</span><Input aria-label="模板名称" value={templateName} onChange={(event) => setTemplateName(event.target.value)} /></label>
           <div><Button onClick={() => setSaveTemplateOpen(false)}>取消</Button><Button variant="primary" disabled={!templateName.trim()} onClick={saveCurrentTemplate}>保存模板</Button></div>
         </div>
@@ -1092,7 +1103,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         open={templateLibraryOpen}
         onOpenChange={setTemplateLibraryOpen}
         templates={templates}
-        onUse={(templateId) => requestWorkspaceAction({ type: 'template', templateId })}
+        onUse={applyTemplateToCurrentArticle}
         onRename={renameTemplate}
         onDelete={deleteTemplate}
       />
