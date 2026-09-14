@@ -242,6 +242,17 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByRole('button', { name: /^教程文章，/ })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('creates an article from the information-to-action preset', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('menuitem', { name: '信息到行动' }))
+
+    expect((screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement).value)
+      .toContain('# 把一条信息变成行动')
+  })
+
   it('saves the current article as a custom template and creates from it', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -887,6 +898,20 @@ describe('WeChat MD application shell', () => {
       '--article-accent': '#9c4f3d',
     })
     expect(screen.getByText('暖色 · 阅读')).toBeVisible()
+  })
+
+  it('applies a new basic style from the existing toolbar menu', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '深海蓝' }))
+
+    expect(container.querySelector('article')).toHaveStyle({
+      '--article-accent': '#1D4ED8',
+      '--article-text': '#374151',
+    })
+    expect(screen.getByText('深海蓝')).toBeVisible()
   })
 
   it('edits detailed heading styles with an immediate preview', async () => {
