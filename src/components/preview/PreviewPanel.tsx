@@ -13,6 +13,7 @@ export type PreviewDevice = 'desktop' | 'mobile'
 
 export interface PreviewPanelHandle {
   setScrollRatio: (ratio: number) => void
+  revealLines: (startLine: number, endLine: number) => void
   resumeFollowing: () => void
 }
 
@@ -66,6 +67,32 @@ export const PreviewPanel = forwardRef<PreviewPanelHandle, PreviewPanelProps>(fu
       if (!viewport) return
       const maximum = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
       scrollControllerRef.current?.scrollTo(maximum * Math.min(1, Math.max(0, ratio)))
+    },
+    revealLines(startLine, endLine) {
+      const viewport = viewportRef.current
+      const article = localArticleRef.current
+      if (!viewport || !article) return
+      const blocks = Array.from(article.querySelectorAll<HTMLElement>('[data-source-start]'))
+      const target = blocks.find((block) => {
+        const blockStart = Number(block.dataset.sourceStart)
+        const blockEnd = Number(block.dataset.sourceEnd)
+        return blockStart <= startLine && blockEnd >= startLine
+      }) ?? blocks.find((block) => {
+        const blockStart = Number(block.dataset.sourceStart)
+        const blockEnd = Number(block.dataset.sourceEnd)
+        return blockStart <= endLine && blockEnd >= startLine
+      })
+      if (!target) return
+
+      const viewportRect = viewport.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const edgePadding = 24
+      if (targetRect.top >= viewportRect.top + edgePadding && targetRect.bottom <= viewportRect.bottom - edgePadding) return
+
+      const viewportHeight = viewport.clientHeight || viewportRect.height
+      const maximum = Math.max(0, viewport.scrollHeight - viewportHeight)
+      const centeredTop = viewport.scrollTop + targetRect.top - viewportRect.top - (viewportHeight - targetRect.height) / 2
+      scrollControllerRef.current?.scrollTo(Math.max(0, Math.min(maximum, Math.round(centeredTop))))
     },
     resumeFollowing() {
       scrollControllerRef.current?.cancel()

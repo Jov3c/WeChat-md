@@ -85,6 +85,45 @@ describe('WeChat MD application shell', () => {
     expect(await screen.findByRole('button', { name: /^桌面数据库文章，/ })).toBeVisible()
   })
 
+  it('uses the native window title on desktop and gives its space to the workspace', async () => {
+    render(<App services={runtimeWithFiles(unusedFileService())} />)
+
+    expect(await screen.findByRole('region', { name: '编辑工作区' })).toBeVisible()
+    expect(screen.queryByText('专注于更好的公众号写作体验')).not.toBeInTheDocument()
+    expect(screen.queryByText('WeChat MD Editor')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveAttribute('data-runtime', 'desktop')
+  })
+
+  it('blocks the browser context menu in the desktop runtime', async () => {
+    render(<App services={runtimeWithFiles(unusedFileService())} />)
+
+    const application = await screen.findByRole('main')
+    const contextMenu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    application.dispatchEvent(contextMenu)
+
+    expect(contextMenu.defaultPrevented).toBe(true)
+  })
+
+  it('opens desktop software settings with the current article image directory', async () => {
+    const user = userEvent.setup()
+    const services = {
+      ...runtimeWithFiles(unusedFileService()),
+      imageArchive: {
+        getDirectory: async () => 'E:\\Apps\\WeChat MD',
+        chooseDirectory: async () => null,
+        resetDirectory: async () => 'E:\\Apps\\WeChat MD',
+        saveArticle: async () => ({ directory: '', saved: 0 }),
+        openDirectory: async () => undefined,
+      },
+    } as RuntimeServices
+    render(<App services={services} />)
+
+    await user.click(await screen.findByRole('button', { name: '设置' }))
+
+    expect(screen.getByRole('dialog', { name: '软件设置' })).toBeVisible()
+    expect(screen.getByText('E:\\Apps\\WeChat MD')).toBeVisible()
+  })
+
   it('imports Markdown through the runtime file service', async () => {
     const user = userEvent.setup()
     const files: FileService = {
@@ -641,6 +680,25 @@ describe('WeChat MD application shell', () => {
     const previewText = preview.getByText(/Ollama 是一个开源的本地大模型运行工具/)
     expect(previewText).toHaveAttribute('data-selection-active', 'true')
     expect(previewText).toHaveAttribute('data-selected-text', selectedText)
+  })
+
+  it('locates the matching preview block from an editor selection even when scroll synchronization is disabled', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    const user = userEvent.setup()
+    render(<App />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+    const previewScroller = screen.getByRole('region', { name: '预览滚动区域' })
+    const target = screen.getByRole('heading', { name: '2 安装 Ollama' })
+    setScrollMetrics(previewScroller, 2000, 400, 0)
+    vi.spyOn(previewScroller, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 500, height: 400, left: 0, right: 600, width: 600, x: 0, y: 100, toJSON: () => ({}) })
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 760, height: 60, left: 0, right: 600, width: 600, x: 0, y: 700, toJSON: () => ({}) })
+    await user.click(screen.getByRole('button', { name: '双栏同步已开启' }))
+    const offset = editor.value.indexOf('## 2. 安装 Ollama')
+
+    editor.setSelectionRange(offset, offset)
+    fireEvent.select(editor)
+
+    expect(previewScroller.scrollTop).toBe(430)
   })
 
   it('moves the editor selection to a clicked preview block', async () => {
@@ -1228,6 +1286,42 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByRole('button', { name: /^导入的公众号文章，/ })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 导入的公众号文章\n\n公众号正文')
     expect(container.querySelector('article')).toHaveStyle({ '--article-accent': '#336699' })
+  })
+
+  it('writes extracted public account images to the configured desktop directory', async () => {
+    const user = userEvent.setup()
+    const saveArticle = vi.fn().mockResolvedValue({ directory: 'D:\\公众号文章\\带图片文章\\images', saved: 1 })
+    const extraction: ExtractedWechatArticle = {
+      sourceUrl: 'https://mp.weixin.qq.com/s/image-example',
+      title: '带图片文章',
+      author: '示例作者',
+      html: '<p>正文</p>',
+      markdown: '![配图](https://mmbiz.qpic.cn/example.png)',
+      tokens: [],
+      components: [],
+    }
+    const services = {
+      ...runtimeWithFiles(unusedFileService()),
+      extractWechatArticle: async () => extraction,
+      imageFetcher: async () => new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/png' } }),
+      imageArchive: {
+        getDirectory: async () => 'D:\\公众号文章',
+        chooseDirectory: async () => null,
+        resetDirectory: async () => 'E:\\Apps\\WeChat MD',
+        saveArticle,
+        openDirectory: async () => undefined,
+      },
+    } as RuntimeServices
+
+    render(<App services={services} />)
+    await user.click(await screen.findByRole('button', { name: '提取公众号' }))
+    await user.type(screen.getByRole('textbox', { name: '公众号文章链接' }), extraction.sourceUrl)
+    await user.click(screen.getByRole('button', { name: '开始提取' }))
+    await user.click(await screen.findByRole('button', { name: '保存文章' }))
+
+    await waitFor(() => expect(saveArticle).toHaveBeenCalledOnce())
+    expect(saveArticle).toHaveBeenCalledWith('带图片文章', [expect.objectContaining({ name: expect.any(String), mimeType: 'image/png' })])
+    expect(await screen.findByText(/1 张图片已保存到/)).toBeVisible()
   })
 
   it('lets the user change the public account article save policy from page settings', async () => {

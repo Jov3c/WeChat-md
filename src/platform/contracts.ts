@@ -4,6 +4,7 @@ import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction
 import type { VersionRepository } from '../features/versions/versionRepository'
 import type { RuntimeKind } from './runtime'
 import type { TextExport } from '../features/export/articleExport'
+import type { DesktopImageArchive } from './desktopImageArchive'
 
 export interface FileFilter {
   name: string
@@ -47,4 +48,5 @@ export interface RuntimeServices {
   imageFetcher?: typeof fetch
   files: FileService
   databasePath?: string
+  imageArchive?: DesktopImageArchive
 }

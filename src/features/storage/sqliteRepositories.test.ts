@@ -59,6 +59,20 @@ describe('SQLite repositories', () => {
     expect(Array.from(new Uint8Array(await restored!.blob.arrayBuffer()))).toEqual([1, 2, 3])
   })
 
+  it('restores image bytes serialized as JSON text by the desktop SQL bridge', async () => {
+    const database = new ScriptedDatabase()
+    const repository = createSqliteAssetRepository(database)
+    database.reads.push([{
+      id: 'legacy-image', name: '公众号图片.png', mime_type: 'image/png', size: 8,
+      created_at: '2026-09-14T11:00:00.000Z', source: 'wechat', source_url: null,
+      unused: 0, blob: '[137,80,78,71,13,10,26,10]',
+    }])
+
+    const restored = await repository.get('legacy-image')
+
+    expect(Array.from(new Uint8Array(await restored!.blob.arrayBuffer()))).toEqual([137, 80, 78, 71, 13, 10, 26, 10])
+  })
+
   it('decodes style snapshots when listing versions', async () => {
     const database = new ScriptedDatabase()
     const repository = createSqliteVersionRepository(database)

@@ -1,0 +1,10 @@
+.dialog { width: min(520px, calc(100vw - 48px)); }
+.content { display: grid; gap: 14px; }
+.section { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-soft); }
+.heading > div { display: grid; gap: 4px; }
+.heading strong { color: var(--text-primary); font-size: 14px; }
+.heading span, .note { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.path { min-height: 42px; padding: 11px 12px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-panel); color: var(--text-body); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.actions { display: flex; align-items: center; gap: 8px; }
+.reset { margin-left: auto; }
+.note { margin: 0 2px; }

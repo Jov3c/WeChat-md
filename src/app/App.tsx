@@ -4,6 +4,7 @@ import { Toolbar } from '../components/chrome/Toolbar'
 import { EditorPanel, type EditorPanelHandle, type EditorSelection } from '../components/editor/EditorPanel'
 import { PreviewPanel, type PreviewDevice, type PreviewPanelHandle } from '../components/preview/PreviewPanel'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
+import { SoftwareSettingsDialog } from '../components/settings/SoftwareSettingsDialog'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { TemplateLibraryDialog } from '../components/templates/TemplateLibraryDialog'
 import { WechatExtractDialog, type WechatArticleSavePolicy } from '../components/wechat/WechatExtractDialog'
@@ -16,7 +17,7 @@ import { createWorkspaceBackup, mergeWorkspaceBackup, readWorkspaceBackup } from
 import { inspectPublication, type PublicationIssue } from '../features/publication/publicationPreflight'
 import { createBrowserArticleRepository, type ArticleRepository } from '../features/articles/articleRepository'
 import { collectImageAssetIds, createImageMarkdown, localizeRemoteMarkdownImages, removeImageAssetReference, replaceImageAssetUrls } from '../features/assets/assetMarkdown'
-import { createBrowserAssetRepository, type AssetRepository, type ImageAsset } from '../features/assets/assetRepository'
+import { createBrowserAssetRepository, type AssetRepository, type ImageAsset, type StoredImageAsset } from '../features/assets/assetRepository'
 import { createStoredImageAsset, fetchImageAsset } from '../features/assets/imageAssets'
 import { builtInStylePresets, duplicateStylePreset, updateStylePreset, type StylePreset, type StyleValuePath } from '../features/styles/stylePresets'
 import { builtInTemplates, createCustomTemplate, type ArticleTemplate } from '../features/templates/templatePresets'
@@ -54,6 +55,7 @@ export interface AppProps {
 }
 
 export function App({ services, articleRepository, assetRepository, versionRepository, saveDelay = 5000, wechatExtractor: wechatExtractorProp }: AppProps = {}) {
+  const runtime = services?.kind ?? 'web'
   const repository = useMemo(() => services ? services.articleRepository : articleRepository ?? createBrowserArticleRepository(), [articleRepository, services])
   const imageRepository = useMemo(() => services ? services.assetRepository : assetRepository ?? createBrowserAssetRepository(), [assetRepository, services])
   const versionsRepository = useMemo(() => services ? services.versionRepository : versionRepository ?? createBrowserVersionRepository(), [services, versionRepository])
@@ -90,6 +92,9 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const [deleteTarget, setDeleteTarget] = useState<ArticleItem>()
   const [wechatExtractOpen, setWechatExtractOpen] = useState(false)
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false)
+  const [softwareSettingsOpen, setSoftwareSettingsOpen] = useState(false)
+  const [imageSaveDirectory, setImageSaveDirectory] = useState('')
+  const [softwareSettingsBusy, setSoftwareSettingsBusy] = useState(false)
   const [resourceAssets, setResourceAssets] = useState<ImageAsset[]>([])
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [articleVersions, setArticleVersions] = useState<ArticleVersion[]>([])
@@ -170,6 +175,13 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       if (typeof URL.revokeObjectURL === 'function') resourceObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
     }
   }, [])
+
+  useEffect(() => {
+    if (runtime !== 'desktop') return
+    const preventBrowserMenu = (event: MouseEvent) => event.preventDefault()
+    document.addEventListener('contextmenu', preventBrowserMenu)
+    return () => document.removeEventListener('contextmenu', preventBrowserMenu)
+  }, [runtime])
 
   useEffect(() => {
     if (!repository) return
@@ -423,6 +435,56 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const openAssetLibrary = () => {
     setAssetLibraryOpen(true)
     void refreshAssetLibrary()
+  }
+
+  const openSoftwareSettings = async () => {
+    if (!services?.imageArchive) return
+    setSoftwareSettingsOpen(true)
+    setSoftwareSettingsBusy(true)
+    try {
+      setImageSaveDirectory(await services.imageArchive.getDirectory())
+    } catch {
+      setToastMessage('无法读取图片保存位置')
+      setToastOpen(true)
+    } finally {
+      setSoftwareSettingsBusy(false)
+    }
+  }
+
+  const chooseImageSaveDirectory = async () => {
+    if (!services?.imageArchive) return
+    setSoftwareSettingsBusy(true)
+    try {
+      const directory = await services.imageArchive.chooseDirectory()
+      if (directory) setImageSaveDirectory(directory)
+    } catch {
+      setToastMessage('无法更改图片保存位置')
+      setToastOpen(true)
+    } finally {
+      setSoftwareSettingsBusy(false)
+    }
+  }
+
+  const resetImageSaveDirectory = async () => {
+    if (!services?.imageArchive) return
+    setSoftwareSettingsBusy(true)
+    try {
+      setImageSaveDirectory(await services.imageArchive.resetDirectory())
+    } catch {
+      setToastMessage('无法恢复默认保存位置')
+      setToastOpen(true)
+    } finally {
+      setSoftwareSettingsBusy(false)
+    }
+  }
+
+  const openImageSaveDirectory = async () => {
+    try {
+      await services?.imageArchive?.openDirectory(imageSaveDirectory)
+    } catch {
+      setToastMessage('无法打开图片保存位置')
+      setToastOpen(true)
+    }
   }
 
   const insertStoredAsset = (id: string) => {
@@ -776,10 +838,28 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   }
 
   const saveWechatArticle = async (extraction: ExtractedWechatArticle) => {
+    const downloadedAssets: StoredImageAsset[] = []
     const localized = await localizeRemoteMarkdownImages(
       extraction.markdown,
-      async (url) => (await saveRemoteAsset(url, 'wechat')).id,
+      async (url) => {
+        const asset = await saveRemoteAsset(url, 'wechat')
+        downloadedAssets.push(asset)
+        return asset.id
+      },
     )
+    let archived: { directory: string; saved: number } | undefined
+    let archiveFailed = false
+    if (services?.imageArchive && downloadedAssets.length) {
+      try {
+        archived = await services.imageArchive.saveArticle(extraction.title, await Promise.all(downloadedAssets.map(async (asset) => ({
+          name: asset.name,
+          mimeType: asset.mimeType,
+          bytes: new Uint8Array(await asset.blob.arrayBuffer()),
+        }))))
+      } catch {
+        archiveFailed = true
+      }
+    }
     const markdown = /^#\s+/m.test(localized.markdown)
       ? localized.markdown
       : `# ${extraction.title}\n\n${localized.markdown}`.trim()
@@ -800,9 +880,13 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setSelectedComponentText('')
     setSelectedId(article.id)
     setSaveStatus('saving')
-    setToastMessage(localized.failedUrls.length
-      ? `文章已保存，${localized.failedUrls.length} 张图片下载失败并保留原链接`
-      : `已保存公众号文章“${extraction.title}”`)
+    setToastMessage(archiveFailed
+      ? '文章已保存，但图片写入磁盘失败，请检查软件设置中的保存位置'
+      : archived
+        ? `文章已保存，${archived.saved} 张图片已保存到 ${archived.directory}`
+        : localized.failedUrls.length
+          ? `文章已保存，${localized.failedUrls.length} 张图片下载失败并保留原链接`
+          : `已保存公众号文章“${extraction.title}”`)
     setToastOpen(true)
   }
 
@@ -981,16 +1065,16 @@ export function App({ services, articleRepository, assetRepository, versionRepos
 
   if (!storageReady) {
     return (
-      <main className={styles.app}>
-        <TitleBar />
+      <main className={styles.app} data-runtime={runtime}>
+        {runtime === 'web' && <TitleBar />}
         <div className={styles.loading} role="status">正在恢复本地文章…</div>
       </main>
     )
   }
 
   return (
-    <main className={styles.app}>
-      <TitleBar />
+    <main className={styles.app} data-runtime={runtime}>
+      {runtime === 'web' && <TitleBar />}
       <Toolbar
         onNewArticle={() => requestWorkspaceAction({ type: 'new' })}
         onImport={() => { void openMarkdownArticle() }}
@@ -1026,7 +1110,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           onRestore={restoreArticle}
           onDelete={setDeleteTarget}
           onTogglePublished={toggleArticlePublished}
-          onOpenSettings={openPageSettings}
+          onOpenSettings={runtime === 'desktop' ? () => { void openSoftwareSettings() } : openPageSettings}
           onOpenHistory={openVersionHistory}
         />
         <EditorPanel
@@ -1035,10 +1119,11 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           onChange={updateContent}
           tab={editorTab}
           onTabChange={setEditorTab}
-          onSelectionChange={(selection) => {
+          onSelectionChange={(selection, origin) => {
             previewPanelRef.current?.resumeFollowing()
             setEditorSelection(selection)
             if (selection.text.trim()) setSelectedComponentText(selection.text)
+            if (origin === 'user') previewPanelRef.current?.revealLines(selection.startLine, selection.endLine)
           }}
           onUserInteraction={() => previewPanelRef.current?.resumeFollowing()}
           fullscreen={editorFullscreen}
@@ -1120,6 +1205,15 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         onRemoveFromArticle={removeAssetFromCurrentArticle}
         onDelete={(id) => { void deleteUnusedAsset(id) }}
       />
+      {services?.imageArchive ? <SoftwareSettingsDialog
+        open={softwareSettingsOpen}
+        directory={imageSaveDirectory}
+        busy={softwareSettingsBusy}
+        onOpenChange={setSoftwareSettingsOpen}
+        onChooseDirectory={() => { void chooseImageSaveDirectory() }}
+        onResetDirectory={() => { void resetImageSaveDirectory() }}
+        onOpenDirectory={() => { void openImageSaveDirectory() }}
+      /> : null}
       <VersionHistoryDialog
         open={versionHistoryOpen}
         onOpenChange={setVersionHistoryOpen}

@@ -1,10 +1,12 @@
 import Database from '@tauri-apps/plugin-sql'
 import { open, save } from '@tauri-apps/plugin-dialog'
+import { invoke } from '@tauri-apps/api/core'
 import { readFile, readTextFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { createSqliteArticleRepository, createSqliteAssetRepository, createSqliteVersionRepository } from '../features/storage/sqliteRepositories'
 import type { RuntimeServices } from './contracts'
 import { createDesktopImageFetcher, createDesktopWechatExtractor } from './desktopNetwork'
 import { createDesktopFileService } from './fileServices'
+import { createDesktopImageArchive } from './desktopImageArchive'
 
 export async function createDesktopServices(): Promise<RuntimeServices> {
   try {
@@ -23,6 +25,11 @@ export async function createDesktopServices(): Promise<RuntimeServices> {
         readFile,
         writeTextFile,
         writeFile,
+      }),
+      imageArchive: createDesktopImageArchive({
+        invoke,
+        storage: localStorage,
+        selectDirectory: async (defaultPath) => await open({ directory: true, multiple: false, defaultPath }) as string | null,
       }),
       databasePath: database.path,
     }

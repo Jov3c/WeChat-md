@@ -20,7 +20,7 @@ interface AssetRow {
   source: ImageAssetSource
   source_url: string | null
   unused: number
-  blob: Uint8Array | number[]
+  blob: Uint8Array | number[] | string
 }
 
 interface VersionRow {
@@ -42,8 +42,22 @@ function assetMetadata(row: AssetRow): ImageAsset {
   }
 }
 
+function storedImageBytes(value: AssetRow['blob']) {
+  if (value instanceof Uint8Array) return value
+  if (Array.isArray(value)) return new Uint8Array(value)
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (Array.isArray(parsed) && parsed.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+      return new Uint8Array(parsed)
+    }
+  } catch {
+    // The error below gives callers a stable, user-facing failure instead of an empty image.
+  }
+  throw new Error('本地图片数据已损坏')
+}
+
 function storedAsset(row: AssetRow): StoredImageAsset {
-  const bytes = row.blob instanceof Uint8Array ? row.blob : new Uint8Array(row.blob)
+  const bytes = storedImageBytes(row.blob)
   return { ...assetMetadata(row), blob: new Blob([bytes.slice().buffer], { type: row.mime_type }) }
 }
 

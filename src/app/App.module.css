@@ -1,5 +1,6 @@
 .app { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-app); color: var(--text-primary); }
 .loading { display: grid; height: calc(100vh - var(--titlebar-height)); place-items: center; color: var(--text-muted); font-size: 13px; }
+.app[data-runtime='desktop'] .loading { height: 100vh; }
 .workspace {
   --workspace-sidebar-width: var(--sidebar-width);
   display: grid;
@@ -39,6 +40,10 @@
 
 .workspace[data-settings-open='false'] {
   grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr) minmax(0, 1.02fr) 0;
+}
+
+.app[data-runtime='desktop'] .workspace {
+  height: calc(100vh - var(--toolbar-height));
 }
 
 .workspace[data-editor-fullscreen='true'] {

@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { EditorPanel } from './EditorPanel'
+import { createRef } from 'react'
+import { EditorPanel, type EditorPanelHandle } from './EditorPanel'
 
 describe('EditorPanel image input', () => {
   it('sends pasted image files to the image importer without inserting binary text', () => {
@@ -31,5 +32,28 @@ describe('EditorPanel image input', () => {
     fireEvent.drop(screen.getByRole('textbox', { name: 'Markdown 内容' }), { dataTransfer: { files: [file] } })
 
     expect(onImageFiles).toHaveBeenCalledWith([file], 'drop')
+  })
+})
+
+describe('EditorPanel selection origin', () => {
+  it('reports direct editor selections as user interactions', () => {
+    const onSelectionChange = vi.fn()
+    render(<EditorPanel value={'# 标题\n\n正文'} onChange={() => undefined} tab="edit" onTabChange={() => undefined} onSelectionChange={onSelectionChange} />)
+    const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
+
+    editor.setSelectionRange(6, 8)
+    fireEvent.select(editor)
+
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ startLine: 3, text: '正文' }), 'user')
+  })
+
+  it('reports preview-driven focus as a programmatic selection', () => {
+    const onSelectionChange = vi.fn()
+    const ref = createRef<EditorPanelHandle>()
+    render(<EditorPanel ref={ref} value={'# 标题\n\n正文'} onChange={() => undefined} tab="edit" onTabChange={() => undefined} onSelectionChange={onSelectionChange} />)
+
+    act(() => ref.current?.focusLines(3, 3))
+
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ startLine: 3, text: '正文' }), 'programmatic')
   })
 })

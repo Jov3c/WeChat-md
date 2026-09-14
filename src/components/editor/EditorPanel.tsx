@@ -13,6 +13,8 @@ export interface EditorSelection {
   text: string
 }
 
+export type EditorSelectionOrigin = 'user' | 'programmatic'
+
 export interface EditorPanelHandle {
   focusLines: (startLine: number, endLine: number) => void
   setScrollRatio: (ratio: number) => void
@@ -24,7 +26,7 @@ export interface EditorPanelProps {
   onChange: (value: string) => void
   tab: string
   onTabChange: (tab: string) => void
-  onSelectionChange?: (selection: EditorSelection) => void
+  onSelectionChange?: (selection: EditorSelection, origin: EditorSelectionOrigin) => void
   onScrollRatioChange?: (ratio: number) => void
   onUserInteraction?: () => void
   fullscreen?: boolean
@@ -86,6 +88,7 @@ export const EditorPanel = forwardRef<EditorPanelHandle, EditorPanelProps>(funct
 ) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const programmaticSelectionRef = useRef(false)
   const scrollControllerRef = useRef<ReturnType<typeof createAnimatedScrollController> | null>(null)
   scrollControllerRef.current ??= createAnimatedScrollController({
     read: () => textareaRef.current?.scrollTop ?? 0,
@@ -97,8 +100,9 @@ export const EditorPanel = forwardRef<EditorPanelHandle, EditorPanelProps>(funct
   useEffect(() => () => scrollControllerRef.current?.cancel(), [])
 
   const reportSelection = () => {
-    onUserInteraction?.()
-    if (textareaRef.current) onSelectionChange?.(readSelection(textareaRef.current))
+    const origin = programmaticSelectionRef.current ? 'programmatic' : 'user'
+    if (origin === 'user') onUserInteraction?.()
+    if (textareaRef.current) onSelectionChange?.(readSelection(textareaRef.current), origin)
   }
 
   const focusLines = (startLine: number, endLine: number) => {
@@ -108,6 +112,7 @@ export const EditorPanel = forwardRef<EditorPanelHandle, EditorPanelProps>(funct
       const endLineStart = offsetAtLine(textarea.value, endLine)
       const lineEnd = textarea.value.indexOf('\n', endLineStart)
       const end = lineEnd === -1 ? textarea.value.length : lineEnd
+      programmaticSelectionRef.current = true
       textarea.focus()
       textarea.setSelectionRange(start, end)
       const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight) || 28
@@ -116,7 +121,8 @@ export const EditorPanel = forwardRef<EditorPanelHandle, EditorPanelProps>(funct
         clientHeight: textarea.clientHeight,
         scrollHeight: textarea.scrollHeight,
       }))
-      onSelectionChange?.(readSelection(textarea))
+      onSelectionChange?.(readSelection(textarea), 'programmatic')
+      requestAnimationFrame(() => { programmaticSelectionRef.current = false })
   }
 
   useImperativeHandle(ref, () => ({
@@ -136,7 +142,7 @@ export const EditorPanel = forwardRef<EditorPanelHandle, EditorPanelProps>(funct
       requestAnimationFrame(() => {
         textarea.focus()
         textarea.setSelectionRange(nextOffset, nextOffset)
-        onSelectionChange?.(readSelection(textarea))
+        onSelectionChange?.(readSelection(textarea), 'programmatic')
       })
     },
     setScrollRatio(ratio) {
