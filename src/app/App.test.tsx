@@ -9,12 +9,27 @@ import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction
 import type { FileService, RuntimeServices } from '../platform/contracts'
 import { App } from './App'
 
+const { legacyOllamaMarkdown } = vi.hoisted(() => ({ legacyOllamaMarkdown: `# 在本地运行大语言模型：Ollama 完全指南
+
+Ollama 是一个简单易用的工具，让你可以在本地运行各种开源大语言模型。
+
+## 1. 什么是 Ollama？
+
+Ollama 是一个开源的本地大模型运行工具，支持多种模型。
+
+## 2. 安装 Ollama
+
+### 2.1 下载安装
+
+按照系统提示完成安装，然后启动本地服务。` }))
+
 vi.mock('./demoData', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./demoData')>()
   return {
     ...actual,
+    replaceLegacyDemoArticles: <T,>(storedArticles: T[]) => storedArticles,
     articles: [
-      actual.articles[0],
+      { id: 'ollama', title: '在本地运行大语言模型：Ollama 完全指南', date: '今天 15:42', content: legacyOllamaMarkdown, templateId: 'tutorial' },
       { id: 'ai-tools', title: 'AI 工具推荐清单', date: '2024-01-15', content: '# AI 工具推荐清单\n\n整理我日常使用的效率工具。', favorite: true },
       { id: 'markdown', title: '如何高效使用 Markdown', date: '2024-01-12', content: '# 如何高效使用 Markdown\n\n从结构开始，而不是从样式开始。' },
       { id: 'knowledge', title: '从 0 开始搭建个人知识库', date: '2024-01-10', content: '# 从 0 开始搭建个人知识库' },
@@ -930,18 +945,14 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByText('暖色 · 阅读')).toBeVisible()
   })
 
-  it('applies a new basic style from the existing toolbar menu', async () => {
+  it('does not list the removed basic and advanced styles', async () => {
     const user = userEvent.setup()
-    const { container } = render(<App />)
+    render(<App />)
 
     await user.click(screen.getByRole('button', { name: '风格' }))
-    await user.click(screen.getByRole('menuitem', { name: '深海蓝' }))
 
-    expect(container.querySelector('article')).toHaveStyle({
-      '--article-accent': '#1D4ED8',
-      '--article-text': '#374151',
-    })
-    expect(screen.getByText('深海蓝')).toBeVisible()
+    expect(screen.queryByRole('menuitem', { name: '深海蓝' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: '深海终端' })).not.toBeInTheDocument()
   })
 
   it('edits detailed heading styles with an immediate preview', async () => {

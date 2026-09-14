@@ -25,7 +25,7 @@ import { applyExtractedStyle, extractWechatArticle, type ExtractedWechatArticle 
 import { createArticleVersion, shouldCreateAutomaticVersion, type ArticleVersion, type ArticleVersionReason } from '../features/versions/articleVersions'
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
 import { createVersionWriteQueue } from '../features/versions/versionWriteQueue'
-import { articles, type ArticleItem } from './demoData'
+import { articles, replaceLegacyDemoArticles, type ArticleItem } from './demoData'
 import type { OpenedTextFile, RuntimeServices } from '../platform/contracts'
 import { createBrowserFileService } from '../platform/fileServices'
 import styles from './App.module.css'
@@ -179,19 +179,20 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         if (!active) return
         if (snapshot?.articles.length) {
           const restoredStyles = [...builtInStylePresets, ...(snapshot.styles ?? []).filter((preset) => !preset.builtIn)]
-          setArticleList(snapshot.articles)
+          const restoredArticles = replaceLegacyDemoArticles(snapshot.articles)
+          setArticleList(restoredArticles)
           setStylePresets(restoredStyles)
           setTemplates([...builtInTemplates, ...(snapshot.templates ?? []).filter((template) => !template.builtIn)])
           setContentComponents([...builtInContentComponents, ...(snapshot.components ?? []).filter((component) => !component.builtIn)])
           setWechatSavePolicy(snapshot.wechatArticleSavePolicy ?? 'ask')
           setSyncEnabled(snapshot.syncEnabled ?? true)
-          const restoredId = snapshot.articles.some((article) => article.id === snapshot.selectedId)
+          const restoredId = restoredArticles.some((article) => article.id === snapshot.selectedId)
             ? snapshot.selectedId
-            : snapshot.articles[0].id
+            : restoredArticles[0].id
           setSelectedId(restoredId)
-          previousSelectedArticleRef.current = snapshot.articles.find((article) => article.id === restoredId)
+          previousSelectedArticleRef.current = restoredArticles.find((article) => article.id === restoredId)
           const observedAt = new Date().toISOString()
-          versionBaselinesRef.current = new Map(snapshot.articles.map((article) => [article.id, {
+          versionBaselinesRef.current = new Map(restoredArticles.map((article) => [article.id, {
             id: `baseline-${article.id}`, articleId: article.id, title: article.title, content: article.content, styleId: article.styleId,
             styleSnapshot: restoredStyles.find((style) => style.id === (article.styleId ?? 'default')), createdAt: observedAt, reason: 'automatic' as const,
           }]))

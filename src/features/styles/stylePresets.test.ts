@@ -1,45 +1,14 @@
 import { builtInStylePresets, duplicateStylePreset, updateStylePreset } from './stylePresets'
 
 describe('article style presets', () => {
-  it('ships the complete core, basic, and advanced preset catalog', () => {
-    expect(builtInStylePresets).toHaveLength(36)
-    expect(builtInStylePresets.slice(0, 3).map(({ id }) => id)).toEqual(['default', 'warm', 'ink'])
-    expect(builtInStylePresets.filter(({ category }) => category === 'basic').map(({ name }) => name)).toEqual([
-      '深海蓝', '曙光橙', '星穹紫', '鎏金黑', '青瓷', '绯樱',
-      '摸鱼绿', '红白风', '石墨极简', '留白禅意', '摸鱼票据', '橄榄手记',
-      '摩卡', '勃艮第', '午夜靛蓝', '芒果琥珀', '湖水青', '燕麦拿铁',
+  it('ships only the three original built-in styles', () => {
+    expect(builtInStylePresets).toHaveLength(3)
+    expect(builtInStylePresets.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: 'default', name: '默认 · 简洁' },
+      { id: 'warm', name: '暖色 · 阅读' },
+      { id: 'ink', name: '墨色 · 长文' },
     ])
-    expect(builtInStylePresets.filter(({ category }) => category === 'advanced')).toHaveLength(15)
-    expect(new Set(builtInStylePresets.map(({ id }) => id)).size).toBe(36)
     expect(builtInStylePresets.every((preset) => preset.builtIn)).toBe(true)
-    expect(new Set(builtInStylePresets.map((preset) => preset.global)).size).toBe(36)
-    expect(new Set(builtInStylePresets.map((preset) => preset.headings.h2)).size).toBe(36)
-  })
-
-  it('maps representative basic profiles into readable article styles', () => {
-    expect(builtInStylePresets.find(({ id }) => id === 'basic-ocean')).toMatchObject({
-      name: '深海蓝', category: 'basic',
-      global: { accentColor: '#1D4ED8', textColor: '#374151' },
-      components: { quote: { borderColor: '#1D4ED8' } },
-    })
-    expect(builtInStylePresets.find(({ id }) => id === 'basic-onyx')).toMatchObject({
-      name: '鎏金黑', category: 'basic',
-      global: { accentColor: '#D97706', textColor: '#374151' },
-    })
-    expect(builtInStylePresets.find(({ id }) => id === 'basic-oat')).toMatchObject({
-      name: '燕麦拿铁', category: 'basic',
-      global: { backgroundColor: '#FAFAF9', textColor: '#44403C' },
-    })
-  })
-
-  it('preserves the readable dark-paper identity of the deep-sea preset', () => {
-    const preset = builtInStylePresets.find(({ id }) => id === 'visual-deep-sea-terminal')
-
-    expect(preset).toMatchObject({
-      name: '深海终端',
-      global: { backgroundColor: '#101A22', textColor: '#D8E1E1', accentColor: '#5FAE9E' },
-      components: { quote: { backgroundColor: '#17242D', color: '#91A3A8' } },
-    })
   })
 
   it('duplicates a built-in preset as an editable custom style', () => {
