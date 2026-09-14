@@ -4,7 +4,7 @@ describe('fresh workspace demo content', () => {
   it('starts with one full-featured WeChat MD tutorial article', () => {
     expect(articles).toHaveLength(1)
     expect(articles[0]).toMatchObject({
-      id: 'wechat-md-guide',
+      id: 'wechat-md-guide-v2',
       title: '一篇示例，完整看懂 WeChat MD',
       templateId: 'tutorial',
     })
@@ -17,19 +17,19 @@ describe('fresh workspace demo content', () => {
     expect(articles[0].content.length).toBeGreaterThan(1_200)
   })
 
-  it('replaces legacy bundled examples while preserving user articles', () => {
+  it('replaces every existing article when the one-time reset has not run', () => {
     const migrated = replaceLegacyDemoArticles([
       { id: 'ollama', title: '在本地运行大语言模型：Ollama 完全指南', date: '今天', content: '# 旧示例' },
       { id: 'ai-tools', title: 'AI 工具推荐清单', date: '今天', content: '# 旧示例' },
       { id: 'my-article', title: '我的文章', date: '今天', content: '# 不应删除' },
     ])
 
-    expect(migrated.map(({ id }) => id)).toEqual(['wechat-md-guide', 'my-article'])
-    expect(migrated.find(({ id }) => id === 'my-article')?.content).toBe('# 不应删除')
+    expect(migrated.map(({ id }) => id)).toEqual(['wechat-md-guide-v2'])
   })
 
-  it('does not add the guide to a workspace containing only user articles', () => {
-    const userArticles = [{ id: 'my-article', title: '我的文章', date: '今天', content: '# 正文' }]
+  it('preserves articles created after the one-time reset', () => {
+    const resetGuide = { ...articles[0], content: '# 用户修改过的示例' }
+    const userArticles = [resetGuide, { id: 'my-article', title: '我的文章', date: '今天', content: '# 正文' }]
 
     expect(replaceLegacyDemoArticles(userArticles)).toEqual(userArticles)
   })

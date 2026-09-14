@@ -130,30 +130,11 @@ export const wechatMdGuideMarkdown = `# 一篇示例，完整看懂 WeChat MD
 现在试着改动这篇文章、切换一次模板，再选择不同风格。你会发现：从写作、排版到发布，所有步骤都可以留在同一个工作区里完成。`
 
 export const articles: ArticleItem[] = [
-  { id: 'wechat-md-guide', title: '一篇示例，完整看懂 WeChat MD', date: '刚刚', content: wechatMdGuideMarkdown, templateId: 'tutorial' },
+  { id: 'wechat-md-guide-v2', title: '一篇示例，完整看懂 WeChat MD', date: '刚刚', content: wechatMdGuideMarkdown, templateId: 'tutorial' },
 ]
 
-const legacyBundledArticles = new Map([
-  ['ollama', '在本地运行大语言模型：Ollama 完全指南'],
-  ['ai-tools', 'AI 工具推荐清单'],
-  ['markdown', '如何高效使用 Markdown'],
-  ['knowledge', '从 0 开始搭建个人知识库'],
-  ['chatgpt', 'ChatGPT 使用心得'],
-  ['annual', '我的年度总结'],
-  ['efficiency', '好用的效率工具'],
-  ['layout', '微信公众号排版技巧'],
-])
-
 export function replaceLegacyDemoArticles(storedArticles: ArticleItem[]) {
-  const hasLegacyBundledArticle = storedArticles.some((article) => (
-    legacyBundledArticles.get(article.id) === article.title
-  ))
-  if (!hasLegacyBundledArticle) return storedArticles
-
-  const retained = storedArticles.filter((article) => (
-    article.id === articles[0].id
-    || legacyBundledArticles.get(article.id) !== article.title
-  ))
-  const guide = retained.find((article) => article.id === articles[0].id) ?? { ...articles[0] }
-  return [guide, ...retained.filter((article) => article.id !== guide.id)]
+  return storedArticles.some((article) => article.id === articles[0].id)
+    ? storedArticles
+    : [{ ...articles[0] }]
 }
