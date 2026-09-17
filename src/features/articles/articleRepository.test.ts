@@ -65,7 +65,7 @@ describe('IndexedDB article repository', () => {
     const snapshot: ArticleLibrarySnapshot = {
       articles: [{ id: 'article', title: '文章', date: '刚刚', content: '# 内容' }],
       selectedId: 'article',
-      templates: [{ id: 'template-1', name: '我的模板', description: '自定义文章结构', content: '# 模板', builtIn: false }],
+      templates: [{ id: 'template-1', name: '我的模板', description: '自定义文章结构', content: '# 模板', layoutId: 'standard', builtIn: false }],
       components: [{ id: 'component-1', name: '固定结尾', description: '自定义内容块', content: '**结尾**', builtIn: false }],
     }
 

@@ -7,21 +7,35 @@ export interface PlatformGateProps {
   children: (services: RuntimeServices) => ReactNode
 }
 
+const serviceLoads = new WeakMap<PlatformGateProps['createServices'], Promise<RuntimeServices>>()
+
+function loadServices(createServices: PlatformGateProps['createServices']) {
+  const existing = serviceLoads.get(createServices)
+  if (existing) return existing
+
+  const pending = Promise.resolve().then(createServices)
+  serviceLoads.set(createServices, pending)
+  pending.catch(() => {
+    if (serviceLoads.get(createServices) === pending) serviceLoads.delete(createServices)
+  })
+  return pending
+}
+
 export function PlatformGate(_props: PlatformGateProps) {
   const { createServices, children } = _props
   const [attempt, setAttempt] = useState(0)
   const [services, setServices] = useState<RuntimeServices>()
-  const [error, setError] = useState<{ message: string; databasePath?: string }>()
+  const [error, setError] = useState<{ message: string; databasePath?: string; details?: string }>()
 
   useEffect(() => {
     let active = true
     setError(undefined)
-    createServices().then((value) => {
+    loadServices(createServices).then((value) => {
       if (active) setServices(value)
     }).catch((reason: unknown) => {
       if (!active) return
-      const value = reason as { message?: string; databasePath?: string }
-      setError({ message: value.message ?? '桌面数据无法打开', databasePath: value.databasePath })
+      const value = reason as { message?: string; databasePath?: string; details?: string }
+      setError({ message: value.message ?? '桌面数据无法打开', databasePath: value.databasePath, details: value.details })
     })
     return () => { active = false }
   }, [attempt, createServices])
@@ -34,7 +48,9 @@ export function PlatformGate(_props: PlatformGateProps) {
           <img src="/favicon.svg" alt="" className={styles.mark} />
           <h1>桌面数据无法打开</h1>
           <p>你的文章没有被修改。请确认文件未被其他程序占用，然后重试。</p>
+          {error.message !== '桌面数据无法打开' ? <code>{error.message}</code> : null}
           {error.databasePath ? <code>{error.databasePath}</code> : null}
+          {error.details ? <code>{error.details}</code> : null}
           <button type="button" onClick={() => setAttempt((value) => value + 1)}>重试</button>
         </section>
       </main>

@@ -35,7 +35,12 @@ export async function createDesktopServices(): Promise<RuntimeServices> {
     }
   } catch (reason) {
     const error = new Error('桌面数据无法打开', { cause: reason })
-    Object.assign(error, { databasePath: 'sqlite:wechat-md.db' })
+    const details = reason instanceof Error
+      ? reason.message
+      : typeof reason === 'string'
+        ? reason
+        : JSON.stringify(reason)
+    Object.assign(error, { databasePath: 'sqlite:wechat-md.db', details })
     throw error
   }
 }

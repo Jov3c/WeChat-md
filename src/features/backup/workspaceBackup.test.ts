@@ -4,7 +4,7 @@ import type { ArticleVersion } from '../versions/articleVersions'
 import { createWorkspaceBackup, mergeWorkspaceBackup, readWorkspaceBackup } from './workspaceBackup'
 
 const snapshot: ArticleLibrarySnapshot = {
-  articles: [{ id: 'article-1', title: '文章', date: '刚刚', content: '![图](asset://image-1)', styleId: 'style-1' }],
+  articles: [{ id: 'article-1', title: '文章', date: '刚刚', content: '![图](asset://image-1)', styleId: 'style-1', layoutId: 'standard' }],
   selectedId: 'article-1',
   styles: [{ id: 'style-1', name: '风格', description: '自定义', builtIn: false, global: {} as never, headings: {} as never, components: {} as never }],
   templates: [], components: [], syncEnabled: false, wechatArticleSavePolicy: 'always',
@@ -21,8 +21,21 @@ describe('workspace backup', () => {
     expect(await restored.assets[0].blob.text()).toBe('img')
   })
 
+  it('migrates layout and content-template metadata from an older backup', async () => {
+    const legacySnapshot = {
+      articles: [{ id: 'legacy', title: '旧文章', date: '以前', content: '# 内容', templateId: 'custom-template' }],
+      selectedId: 'legacy',
+      templates: [{ id: 'custom-template', name: '旧模板', description: '旧结构', content: '# 模板', layout: 'news', builtIn: false }],
+    } as unknown as ArticleLibrarySnapshot
+
+    const restored = await readWorkspaceBackup(await createWorkspaceBackup(legacySnapshot, [], []))
+
+    expect(restored.snapshot.articles[0]).toMatchObject({ layoutId: 'news', contentTemplateId: 'custom-template', content: '# 内容' })
+    expect(restored.snapshot.templates?.[0]).toMatchObject({ layoutId: 'news', content: '# 模板' })
+  })
+
   it('safely merges collisions and rewrites every relation', () => {
-    const current: ArticleLibrarySnapshot = { articles: [{ id: 'article-1', title: '已有', date: '刚刚', content: '' }], selectedId: 'article-1', styles: [{ ...snapshot.styles![0], name: '已有风格' }] }
+    const current: ArticleLibrarySnapshot = { articles: [{ id: 'article-1', title: '已有', date: '刚刚', content: '', layoutId: 'standard' }], selectedId: 'article-1', styles: [{ ...snapshot.styles![0], name: '已有风格' }] }
     const merged = mergeWorkspaceBackup(current, { snapshot, versions, assets }, {
       existingAssetIds: ['image-1'], makeId: (kind, id) => `imported-${kind}-${id}`,
     })

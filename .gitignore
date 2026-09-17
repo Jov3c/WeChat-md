@@ -30,6 +30,7 @@ yarn-error.log*
 # Local product and design references
 /*设计*.md
 /*基线*.md
+/*_改进问题与解决方案.md
 /*.png
 /*.wechatmd
 /*.db

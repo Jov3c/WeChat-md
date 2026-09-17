@@ -6,7 +6,7 @@ describe('fresh workspace demo content', () => {
     expect(articles[0]).toMatchObject({
       id: 'wechat-md-guide-v2',
       title: '一篇示例，完整看懂 WeChat MD',
-      templateId: 'tutorial',
+      layoutId: 'tutorial',
     })
     expect(articles[0].content).toContain('## 先从一篇文章开始')
     expect(articles[0].content).toContain('## 让模板与风格各司其职')

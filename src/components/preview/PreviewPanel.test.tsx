@@ -73,6 +73,25 @@ describe('Markdown preview', () => {
     expect(article).toHaveAttribute('data-h2-numbered', 'true')
   })
 
+  it('exposes the selected article layout without changing the markdown', () => {
+    const { container } = render(
+      <PreviewPanel
+        markdown="# 原始正文"
+        device="desktop"
+        onDeviceChange={() => undefined}
+        syncEnabled
+        onSyncEnabledChange={() => undefined}
+        onBlockActivate={() => undefined}
+        settingsOpen
+        onShowSettings={() => undefined}
+        layoutId="tutorial"
+      />,
+    )
+
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
+    expect(screen.getByRole('heading', { name: '原始正文' })).toBeVisible()
+  })
+
   it('renders automatic markers for every heading level so numbering styles can be toggled', () => {
     const preset: StylePreset = {
       ...builtInStylePresets[0],

@@ -4,6 +4,9 @@ export interface ArticleItem {
   date: string
   content: string
   styleId?: string
+  layoutId?: import('../features/layouts/articleLayouts').ArticleLayoutId
+  contentTemplateId?: string
+  /** @deprecated 旧工作区兼容字段。 */
   templateId?: string
   favorite?: boolean
   source?: 'local' | 'imported' | 'wechat'
@@ -57,12 +60,12 @@ export const wechatMdGuideMarkdown = `# 一篇示例，完整看懂 WeChat MD
 
 ## 让模板与风格各司其职
 
-### 模板决定文章怎么排
+### 版式决定文章怎么排
 
-顶部的“模板”用于切换文章类型，例如教程、新闻、资讯、经验分享和产品介绍。它改变标题、章节、引用与列表的组织方式，**不会替换正文，也不会新建文章**。
+顶部的“版式”用于切换文章类型，例如教程、新闻、资讯、经验分享和产品介绍。它改变标题、章节、引用与列表的视觉组织方式，**不会替换正文，也不会新建文章**。
 
-1. 打开顶部“模板”菜单
-2. 选择适合当前内容的文章模板
+1. 打开顶部“版式”菜单
+2. 选择适合当前内容的文章版式
 3. 在预览区检查章节节奏
 4. 不满意时继续切换，正文始终保留
 
@@ -74,7 +77,7 @@ export const wechatMdGuideMarkdown = `# 一篇示例，完整看懂 WeChat MD
 - **暖色 · 阅读**：适合故事、随笔和生活内容
 - **墨色 · 长文**：适合深度文章与沉浸阅读
 
-模板负责结构，风格负责视觉。把两者分开后，同一篇文章可以尝试不同呈现方式，而不必复制多份正文。
+版式负责文章类型的排版规则，风格负责颜色和字体。内容模板则提供可以直接开始填写的正文骨架，使用后会新建文章，不会覆盖当前原稿。
 
 ## 提取公众号文章与管理图片
 
@@ -104,7 +107,8 @@ export const wechatMdGuideMarkdown = `# 一篇示例，完整看懂 WeChat MD
 
 | 功能 | 解决的问题 |
 | --- | --- |
-| 模板 | 快速确定教程、新闻或分享文章的排版结构 |
+| 版式 | 切换教程、新闻或分享文章的排版规则 |
+| 模板 | 用预先准备的正文骨架新建文章 |
 | 风格 | 统一颜色、字体、字号与阅读节奏 |
 | 组件 | 复用固定结尾、提示框和常用内容块 |
 | 图片资源 | 集中管理上传和提取到的图片 |
@@ -127,10 +131,10 @@ export const wechatMdGuideMarkdown = `# 一篇示例，完整看懂 WeChat MD
 
 ---
 
-现在试着改动这篇文章、切换一次模板，再选择不同风格。你会发现：从写作、排版到发布，所有步骤都可以留在同一个工作区里完成。`
+现在试着改动这篇文章、切换一次版式，再选择不同风格。你会发现：从写作、排版到发布，所有步骤都可以留在同一个工作区里完成。`
 
 export const articles: ArticleItem[] = [
-  { id: 'wechat-md-guide-v2', title: '一篇示例，完整看懂 WeChat MD', date: '刚刚', content: wechatMdGuideMarkdown, templateId: 'tutorial' },
+  { id: 'wechat-md-guide-v2', title: '一篇示例，完整看懂 WeChat MD', date: '刚刚', content: wechatMdGuideMarkdown, layoutId: 'tutorial' },
 ]
 
 export function replaceLegacyDemoArticles(storedArticles: ArticleItem[]) {

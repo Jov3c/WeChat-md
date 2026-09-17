@@ -309,7 +309,7 @@ describe('WeChat MD application shell', () => {
     const originalContent = editor.value
     const originalArticleCount = screen.getAllByRole('button', { name: /，/ }).length
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '版式' }))
     await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
 
     expect(editor.value).toBe(originalContent)
@@ -323,20 +323,20 @@ describe('WeChat MD application shell', () => {
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
     const originalContent = editor.value
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '版式' }))
     await user.click(screen.getByRole('menuitem', { name: '资讯文章' }))
 
     expect(editor.value).toBe(originalContent)
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'information')
   })
 
-  it('saves the current article layout as a custom template and reapplies it without replacing content', async () => {
+  it('saves current content as a template and uses it to create a new article', async () => {
     const user = userEvent.setup()
     const { container } = render(<App />)
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
     fireEvent.change(editor, { target: { value: '# 我的固定结构\n\n## 第一部分' } })
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '版式' }))
     await user.click(screen.getByRole('menuitem', { name: '新闻报道' }))
 
     await user.click(screen.getByRole('button', { name: '模板' }))
@@ -345,14 +345,16 @@ describe('WeChat MD application shell', () => {
     await user.type(dialog.getByRole('textbox', { name: '模板名称' }), '我的长文模板')
     await user.click(dialog.getByRole('button', { name: '保存模板' }))
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '版式' }))
     await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
 
+    const articleCount = screen.getAllByRole('button', { name: /，/ }).length
     await user.click(screen.getByRole('button', { name: '模板' }))
     await user.click(screen.getByRole('menuitem', { name: '我的长文模板' }))
     expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 我的固定结构\n\n## 第一部分')
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'news')
+    expect(screen.getAllByRole('button', { name: /，/ })).toHaveLength(articleCount + 1)
   })
 
   it('renames and deletes a custom template from the template library', async () => {
@@ -466,7 +468,7 @@ describe('WeChat MD application shell', () => {
     const repository = createMemoryArticleRepository({
       articles: [{ id: 'persisted', title: '本地文章', date: '刚刚', content: '# 已恢复内容' }],
       selectedId: 'persisted',
-      templates: [{ id: 'saved-template', name: '长期模板', description: '自定义文章结构', content: '# 固定结构', builtIn: false }],
+      templates: [{ id: 'saved-template', name: '长期模板', description: '自定义文章结构', content: '# 固定结构', layoutId: 'standard', builtIn: false }],
       components: [{ id: 'saved-component', name: '固定结尾', description: '自定义内容块', content: '**感谢阅读**', builtIn: false }],
     })
 
@@ -833,10 +835,99 @@ describe('WeChat MD application shell', () => {
 
     await user.click(screen.getByRole('button', { name: '复制到公众号' }))
 
-    expect(screen.getByRole('dialog', { name: '发布前检查' })).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: '发布前检查' })
+    expect(dialog).toBeVisible()
+    expect(within(dialog).getByText(/图片使用了无法在微信公众号中独立访问的相对地址/)).toBeVisible()
     expect(write).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: '仍然复制' }))
     await waitFor(() => expect(write).toHaveBeenCalledOnce())
+  })
+
+  it('validates the final portable HTML and explains compatibility notices before copying', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, writeText: vi.fn() } })
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    render(<App />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown 内容' }), {
+      target: { value: `# 长文章\n\n${'长内容'.repeat(7000)}` },
+    })
+
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '发布前检查' })
+    expect(within(dialog).getByText('提示')).toBeVisible()
+    expect(within(dialog).getByText(/文章约.*字/)).toBeVisible()
+    expect(within(dialog).getByText(/保存微信草稿后重新打开/)).toBeVisible()
+    expect(write).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: '仍然复制' }))
+    await waitFor(() => expect(write).toHaveBeenCalledOnce())
+  })
+
+  it('discards a prepared clipboard payload when the article changes during image conversion', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write } })
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/slow-image')
+    let finishFetch: (response: Response) => void = () => undefined
+    const fetchImage = vi.fn(() => new Promise<Response>((resolve) => { finishFetch = resolve }))
+    vi.stubGlobal('fetch', fetchImage)
+    const articleRepository = createMemoryArticleRepository({
+      articles: [{ id: 'race', title: '复制竞态', date: '刚刚', content: '# 旧内容\n\n![图片](asset://image-1)' }],
+      selectedId: 'race',
+    })
+    const assetRepository = createMemoryAssetRepository([{
+      id: 'image-1', name: '图片.png', mimeType: 'image/png', size: 5, createdAt: '2026-09-17T00:00:00.000Z', source: 'file', blob: new Blob(['image'], { type: 'image/png' }),
+    }])
+    render(<App articleRepository={articleRepository} assetRepository={assetRepository} />)
+
+    await waitFor(() => expect(document.querySelector('article img')).toHaveAttribute('src', 'blob:http://localhost/slow-image'))
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+    await waitFor(() => expect(fetchImage).toHaveBeenCalledOnce())
+    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown 内容' }), { target: { value: '# 新内容' } })
+    finishFetch(new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }))
+
+    expect(await screen.findByText('文章已发生变化，请重新复制')).toBeVisible()
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('discards a prepared clipboard payload when preview rendering changes during image conversion', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write } })
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/slow-preview-image')
+    let finishFetch: (response: Response) => void = () => undefined
+    const fetchImage = vi.fn(() => new Promise<Response>((resolve) => { finishFetch = resolve }))
+    vi.stubGlobal('fetch', fetchImage)
+    const articleRepository = createMemoryArticleRepository({
+      articles: [{ id: 'preview-race', title: '预览竞态', date: '刚刚', content: '# 内容\n\n![图片](asset://image-1)' }],
+      selectedId: 'preview-race',
+    })
+    const assetRepository = createMemoryAssetRepository([{
+      id: 'image-1', name: '图片.png', mimeType: 'image/png', size: 5, createdAt: '2026-09-17T00:00:00.000Z', source: 'file', blob: new Blob(['image'], { type: 'image/png' }),
+    }])
+    render(<App articleRepository={articleRepository} assetRepository={assetRepository} />)
+
+    await waitFor(() => expect(document.querySelector('article img')).toHaveAttribute('src', 'blob:http://localhost/slow-preview-image'))
+    await user.click(screen.getByRole('button', { name: '复制到公众号' }))
+    await waitFor(() => expect(fetchImage).toHaveBeenCalledOnce())
+    await user.click(screen.getByRole('button', { name: '手机预览' }))
+    finishFetch(new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }))
+
+    expect(await screen.findByText('文章已发生变化，请重新复制')).toBeVisible()
+    expect(write).not.toHaveBeenCalled()
   })
 
   it('connects article selection and editor changes to application state', async () => {

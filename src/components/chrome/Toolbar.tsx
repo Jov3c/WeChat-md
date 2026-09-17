@@ -8,7 +8,8 @@ import {
   Settings2,
 } from 'lucide-react'
 import { builtInStylePresets, type StylePreset } from '../../features/styles/stylePresets'
-import { builtInTemplates, type ArticleTemplate } from '../../features/templates/templatePresets'
+import { builtInLayouts, type ArticleLayout, type ArticleLayoutId } from '../../features/layouts/articleLayouts'
+import { builtInContentTemplates, type ArticleContentTemplate } from '../../features/templates/templatePresets'
 import { Button, Divider, DropdownMenu, IconButton, Tooltip } from '../ui'
 import styles from './AppChrome.module.css'
 
@@ -23,8 +24,11 @@ export interface ToolbarProps {
   activeStyleId?: string
   onStyleSelect?: (id: string) => void
   onManageStyles?: () => void
-  templates?: ArticleTemplate[]
-  onTemplateSelect?: (templateId: string) => void
+  layouts?: ArticleLayout[]
+  activeLayoutId?: ArticleLayoutId
+  onLayoutSelect?: (layoutId: ArticleLayoutId) => void
+  contentTemplates?: ArticleContentTemplate[]
+  onContentTemplateSelect?: (templateId: string) => void
   onSaveCurrentTemplate?: () => void
   onManageTemplates?: () => void
   onOpenPreviewSettings?: () => void
@@ -57,8 +61,11 @@ export function Toolbar({
   activeStyleId = 'default',
   onStyleSelect = () => undefined,
   onManageStyles = () => undefined,
-  templates: availableTemplates = builtInTemplates,
-  onTemplateSelect = () => undefined,
+  layouts: availableLayouts = builtInLayouts,
+  activeLayoutId = 'standard',
+  onLayoutSelect = () => undefined,
+  contentTemplates: availableTemplates = builtInContentTemplates,
+  onContentTemplateSelect = () => undefined,
   onSaveCurrentTemplate = () => undefined,
   onManageTemplates = () => undefined,
   onOpenPreviewSettings = () => undefined,
@@ -79,11 +86,16 @@ export function Toolbar({
     ...availableTemplates.map((template) => ({
       id: template.id,
       label: template.name,
-      onSelect: () => onTemplateSelect(template.id),
+      onSelect: () => onContentTemplateSelect(template.id),
     })),
     { id: 'save-template', label: '保存当前为模板', separatorBefore: true, onSelect: onSaveCurrentTemplate },
     { id: 'manage-templates', label: '管理模板', onSelect: onManageTemplates },
   ]
+  const layoutItems = availableLayouts.map((layout) => ({
+    id: layout.id,
+    label: `${layout.id === activeLayoutId ? '✓ ' : ''}${layout.name}`,
+    onSelect: () => onLayoutSelect(layout.id),
+  }))
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="文章操作">
@@ -94,6 +106,10 @@ export function Toolbar({
         <Button onClick={onImport}><FileInput size={16} /> 导入 MD</Button>
         <Button onClick={onExtract}><CheckCircle2 size={16} /> 提取公众号</Button>
         <Divider />
+        <DropdownMenu
+          trigger={<Button>版式 <ChevronDown className={styles.buttonChevron} size={14} /></Button>}
+          items={layoutItems}
+        />
         <DropdownMenu
           trigger={<Button>模板 <ChevronDown className={styles.buttonChevron} size={14} /></Button>}
           items={templateItems}

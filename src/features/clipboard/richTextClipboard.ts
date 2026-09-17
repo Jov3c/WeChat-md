@@ -6,6 +6,48 @@ const copiedStyleProperties = [
   'text-indent', 'vertical-align', 'white-space',
 ] as const
 
+function customPropertyValue(element: HTMLElement, name: string) {
+  let current: HTMLElement | null = element
+  while (current) {
+    const inline = current.style.getPropertyValue(name).trim()
+    if (inline) return inline
+    const computed = window.getComputedStyle(current).getPropertyValue(name).trim()
+    if (computed) return computed
+    current = current.parentElement
+  }
+  return ''
+}
+
+function splitVariableArguments(value: string) {
+  let depth = 0
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '(') depth += 1
+    else if (value[index] === ')') depth -= 1
+    else if (value[index] === ',' && depth === 0) return [value.slice(0, index), value.slice(index + 1)] as const
+  }
+  return [value, ''] as const
+}
+
+function resolveCssVariables(element: HTMLElement, value: string, recursion = 0): string {
+  if (recursion > 8) return ''
+  let resolved = value
+  while (resolved.includes('var(')) {
+    const start = resolved.indexOf('var(')
+    let depth = 1
+    let end = start + 4
+    for (; end < resolved.length && depth > 0; end += 1) {
+      if (resolved[end] === '(') depth += 1
+      else if (resolved[end] === ')') depth -= 1
+    }
+    if (depth !== 0) return ''
+    const [name, fallback] = splitVariableArguments(resolved.slice(start + 4, end - 1))
+    const replacement = customPropertyValue(element, name.trim()) || fallback.trim()
+    if (!replacement) return ''
+    resolved = `${resolved.slice(0, start)}${resolveCssVariables(element, replacement, recursion + 1)}${resolved.slice(end)}`
+  }
+  return resolved.trim()
+}
+
 function cleanInternalAttributes(element: Element) {
   for (const attribute of Array.from(element.attributes)) {
     if (attribute.name === 'class' || attribute.name.startsWith('data-') || attribute.name.startsWith('aria-')) {
@@ -25,11 +67,15 @@ export function serializePreviewArticle(article: HTMLElement) {
 
     const computed = window.getComputedStyle(source)
     const inlineStyle = copiedStyleProperties
-      .map((property) => `${property}:${computed.getPropertyValue(property)}`)
-      .filter((declaration) => !declaration.endsWith(':'))
+      .map((property) => [property, resolveCssVariables(source, computed.getPropertyValue(property))] as const)
+      .filter(([, value]) => value)
+      .map(([property, value]) => `${property}:${value}`)
       .join(';')
 
     if (inlineStyle) target.setAttribute('style', inlineStyle)
+    if (source instanceof HTMLImageElement && target instanceof HTMLImageElement) {
+      target.setAttribute('style', `${inlineStyle ? `${inlineStyle};` : ''}max-width:100%;height:auto`)
+    }
     cleanInternalAttributes(target)
   })
 
@@ -59,8 +105,12 @@ export async function makeImageSourcesPortable(
   container.innerHTML = html
   const images = Array.from(container.querySelectorAll<HTMLImageElement>('img[src]'))
   await Promise.all(images.map(async (image) => {
-    const resolved = await resolveSource(image.src)
-    if (resolved) image.src = resolved
+    try {
+      const resolved = await resolveSource(image.src)
+      if (resolved) image.src = resolved
+    } catch {
+      // Leave the original URL in place so the validator can identify this image.
+    }
   }))
   return container.innerHTML
 }
@@ -82,7 +132,35 @@ async function resolveBlobUrl(source: string) {
 }
 
 export function serializePortablePreviewArticle(article: HTMLElement) {
-  return makeImageSourcesPortable(serializePreviewArticle(article), resolveBlobUrl)
+  return preparePreviewArticleForClipboard(article)
+}
+
+export function prepareSerializedArticleForClipboard(
+  html: string,
+  resolveImageSource: (source: string) => Promise<string | undefined> = resolveBlobUrl,
+) {
+  return makeImageSourcesPortable(html, resolveImageSource)
+}
+
+export function preparePreviewArticleForClipboard(
+  article: HTMLElement,
+  resolveImageSource: (source: string) => Promise<string | undefined> = resolveBlobUrl,
+) {
+  return prepareSerializedArticleForClipboard(serializePreviewArticle(article), resolveImageSource)
+}
+
+export async function copyPreparedArticle(html: string, plainText: string) {
+  const clipboard = navigator.clipboard
+  if (!clipboard) throw new Error('当前环境不支持剪贴板')
+
+  if (!clipboard.write || typeof ClipboardItem === 'undefined') {
+    throw new Error('当前环境不支持复制富文本，请使用最新版浏览器或桌面端')
+  }
+
+  await clipboard.write([new ClipboardItem({
+    'text/html': new Blob([html], { type: 'text/html' }),
+    'text/plain': new Blob([plainText], { type: 'text/plain' }),
+  })])
 }
 
 export async function copyPreviewArticle(
@@ -90,17 +168,6 @@ export async function copyPreviewArticle(
   plainText: string,
   resolveImageSource: (source: string) => Promise<string | undefined> = resolveBlobUrl,
 ) {
-  const clipboard = navigator.clipboard
-  if (!clipboard) throw new Error('当前环境不支持剪贴板')
-
-  if (clipboard.write && typeof ClipboardItem !== 'undefined') {
-    const html = await makeImageSourcesPortable(serializePreviewArticle(article), resolveImageSource)
-    await clipboard.write([new ClipboardItem({
-      'text/html': new Blob([html], { type: 'text/html' }),
-      'text/plain': new Blob([plainText], { type: 'text/plain' }),
-    })])
-    return
-  }
-
-  await clipboard.writeText(plainText)
+  const html = await preparePreviewArticleForClipboard(article, resolveImageSource)
+  await copyPreparedArticle(html, plainText)
 }

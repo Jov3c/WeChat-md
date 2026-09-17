@@ -1,4 +1,4 @@
-import { makeImageSourcesPortable, serializePreviewArticle } from './richTextClipboard'
+import { copyPreparedArticle, makeImageSourcesPortable, preparePreviewArticleForClipboard, serializePreviewArticle } from './richTextClipboard'
 
 describe('rich text clipboard serialization', () => {
   it('omits editor-only dimensions and block metadata from copied HTML', () => {
@@ -42,6 +42,32 @@ describe('rich text clipboard serialization', () => {
     article.remove()
   })
 
+  it('adds portable responsive constraints to copied images', () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<img src="https://example.com/large.png" alt="大图">'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+
+    expect(html).toMatch(/max-width:\s*100%/)
+    expect(html).toMatch(/height:\s*auto/)
+    article.remove()
+  })
+
+  it('resolves CSS variables to concrete values before producing clipboard HTML', () => {
+    const article = document.createElement('article')
+    article.style.setProperty('--article-text', '#141413')
+    article.innerHTML = '<p style="color:var(--article-text);background-color:var(--missing, #ffffff)">正文</p>'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+
+    expect(html).not.toContain('var(--')
+    expect(html).toContain('color:#141413')
+    expect(html).toContain('background-color:#ffffff')
+    article.remove()
+  })
+
   it('turns list markers into inline content that keeps its custom color', () => {
     const article = document.createElement('article')
     article.innerHTML = '<ul><li style="--article-list-marker:#9c4f3d">条目</li></ul>'
@@ -59,5 +85,58 @@ describe('rich text clipboard serialization', () => {
 
     await expect(makeImageSourcesPortable(html, async (src) => src.includes('image-1') ? 'data:image/png;base64,aW1hZ2U=' : undefined))
       .resolves.toContain('src="data:image/png;base64,aW1hZ2U="')
+  })
+
+  it('keeps an unresolved blob URL for structured validation when image conversion fails', async () => {
+    const html = '<article><img src="blob:http://localhost/missing" alt="失效图片"></article>'
+
+    await expect(makeImageSourcesPortable(html, async () => { throw new Error('读取失败') }))
+      .resolves.toContain('src="blob:http://localhost/missing"')
+  })
+
+  it('prepares the exact portable HTML that will be validated and copied', async () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<p>正文</p><img src="blob:http://localhost/image-2" alt="配图">'
+    document.body.append(article)
+
+    const html = await preparePreviewArticleForClipboard(article, async (source) => source.includes('image-2')
+      ? 'data:image/png;base64,aW1hZ2U='
+      : undefined)
+
+    expect(html).toContain('<p')
+    expect(html).toContain('src="data:image/png;base64,aW1hZ2U="')
+    expect(html).not.toContain('blob:')
+    article.remove()
+  })
+
+  it('writes the already validated HTML bytes without serializing the live preview again', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    vi.stubGlobal('navigator', { clipboard: { write } })
+
+    const html = '<article><p>已检查内容</p></article>'
+    await copyPreparedArticle(html, '# 已检查内容')
+
+    const item = write.mock.calls[0][0][0] as TestClipboardItem
+    const copiedHtml = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.addEventListener('load', () => resolve(String(reader.result)))
+      reader.addEventListener('error', () => reject(reader.error))
+      reader.readAsText(item.data['text/html'])
+    })
+    expect(copiedHtml).toBe(html)
+  })
+
+  it('fails instead of silently copying Markdown when rich clipboard writing is unavailable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+
+    await expect(copyPreparedArticle('<article><p>已检查内容</p></article>', '# 已检查内容'))
+      .rejects.toThrow('富文本')
+
+    expect(writeText).not.toHaveBeenCalled()
   })
 })

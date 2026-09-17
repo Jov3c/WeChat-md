@@ -3,6 +3,7 @@ import type { ArticleLibrarySnapshot } from '../articles/articleRepository'
 import { remapImageAssetIds } from '../assets/assetMarkdown'
 import type { ImageAsset, StoredImageAsset } from '../assets/assetRepository'
 import type { ArticleVersion } from '../versions/articleVersions'
+import { migrateLegacyTemplateData } from '../templates/templateMigration'
 
 interface BackupManifest {
   format: 'wechat-md-workspace'
@@ -47,7 +48,7 @@ export async function readWorkspaceBackup(blob: Blob): Promise<WorkspaceBackupDa
     if (!bytes) throw new Error(`备份中缺少图片：${asset.name}`)
     return { ...asset, blob: new Blob([bytes.slice().buffer], { type: asset.mimeType }) }
   })
-  return { snapshot: manifest.snapshot, versions: manifest.versions ?? [], assets }
+  return { snapshot: migrateLegacyTemplateData(manifest.snapshot), versions: manifest.versions ?? [], assets }
 }
 
 export function mergeWorkspaceBackup(
@@ -65,6 +66,7 @@ export function mergeWorkspaceBackup(
 
   const importedArticles = imported.snapshot.articles.map((article) => ({
     ...article, id: articleIds[article.id], styleId: article.styleId ? (styleIds[article.styleId] ?? article.styleId) : undefined,
+    contentTemplateId: article.contentTemplateId ? (templateIds[article.contentTemplateId] ?? article.contentTemplateId) : undefined,
     content: remapImageAssetIds(article.content, assetIds),
   }))
   const importedStyles = (imported.snapshot.styles ?? []).map((style) => ({ ...style, id: styleIds[style.id] }))

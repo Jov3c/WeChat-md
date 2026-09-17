@@ -7,28 +7,32 @@ import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SoftwareSettingsDialog } from '../components/settings/SoftwareSettingsDialog'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { TemplateLibraryDialog } from '../components/templates/TemplateLibraryDialog'
-import { WechatExtractDialog, type WechatArticleSavePolicy } from '../components/wechat/WechatExtractDialog'
+import { WechatExtractDialog } from '../components/wechat/WechatExtractDialog'
 import { AssetLibraryDialog } from '../components/assets/AssetLibraryDialog'
 import { VersionHistoryDialog } from '../components/versions/VersionHistoryDialog'
 import { Button, Dialog, Input, Toast } from '../components/ui'
-import { copyPreviewArticle, makeImageSourcesPortable, serializePreviewArticle } from '../features/clipboard/richTextClipboard'
+import { copyPreparedArticle, makeImageSourcesPortable, preparePreviewArticleForClipboard, prepareSerializedArticleForClipboard, serializePreviewArticle } from '../features/clipboard/richTextClipboard'
 import { createHtmlExport, createMarkdownExport } from '../features/export/articleExport'
 import { createWorkspaceBackup, mergeWorkspaceBackup, readWorkspaceBackup } from '../features/backup/workspaceBackup'
 import { inspectPublication, type PublicationIssue } from '../features/publication/publicationPreflight'
-import { createBrowserArticleRepository, type ArticleRepository } from '../features/articles/articleRepository'
-import { collectImageAssetIds, createImageMarkdown, localizeRemoteMarkdownImages, removeImageAssetReference, replaceImageAssetUrls } from '../features/assets/assetMarkdown'
-import { createBrowserAssetRepository, type AssetRepository, type ImageAsset, type StoredImageAsset } from '../features/assets/assetRepository'
-import { createStoredImageAsset, fetchImageAsset } from '../features/assets/imageAssets'
+import { validateWechatHtml, type WechatHtmlValidationIssue } from '../features/publication/wechatHtmlValidator'
+import { createBrowserArticleRepository, type ArticleLibrarySnapshot, type ArticleRepository } from '../features/articles/articleRepository'
+import { collectImageAssetIds, replaceImageAssetUrls } from '../features/assets/assetMarkdown'
+import { createBrowserAssetRepository, type AssetRepository } from '../features/assets/assetRepository'
 import { builtInStylePresets, duplicateStylePreset, updateStylePreset, type StylePreset, type StyleValuePath } from '../features/styles/stylePresets'
-import { builtInTemplates, createCustomTemplate, type ArticleTemplate } from '../features/templates/templatePresets'
+import { builtInContentTemplates, createCustomContentTemplate, type ArticleContentTemplate } from '../features/templates/templatePresets'
+import { builtInLayouts, type ArticleLayoutId } from '../features/layouts/articleLayouts'
+import { migrateLegacyTemplateData } from '../features/templates/templateMigration'
 import { builtInContentComponents, createCustomContentComponent, type ContentComponent } from '../features/components/contentComponents'
-import { applyExtractedStyle, extractWechatArticle, type ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
-import { createArticleVersion, shouldCreateAutomaticVersion, type ArticleVersion, type ArticleVersionReason } from '../features/versions/articleVersions'
+import { extractWechatArticle, type ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
-import { createVersionWriteQueue } from '../features/versions/versionWriteQueue'
 import { articles, replaceLegacyDemoArticles, type ArticleItem } from './demoData'
 import type { OpenedTextFile, RuntimeServices } from '../platform/contracts'
 import { createBrowserFileService } from '../platform/fileServices'
+import { useAutosave } from './hooks/useAutosave'
+import { useAssets } from './hooks/useAssets'
+import { useVersions } from './hooks/useVersions'
+import { useWechatExtraction } from './hooks/useWechatExtraction'
 import styles from './App.module.css'
 
 let articleSequence = 0
@@ -67,7 +71,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const [settingsTab, setSettingsTab] = useState('layout')
   const [device, setDevice] = useState<PreviewDevice>('desktop')
   const [stylePresets, setStylePresets] = useState<StylePreset[]>(() => builtInStylePresets)
-  const [templates, setTemplates] = useState<ArticleTemplate[]>(() => builtInTemplates)
+  const [templates, setTemplates] = useState<ArticleContentTemplate[]>(() => builtInContentTemplates)
   const [contentComponents, setContentComponents] = useState<ContentComponent[]>(() => builtInContentComponents)
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
@@ -86,47 +90,104 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const [editorFullscreen, setEditorFullscreen] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('操作已完成')
-  const [publicationIssues, setPublicationIssues] = useState<PublicationIssue[]>([])
+  const [publicationIssues, setPublicationIssues] = useState<Array<PublicationIssue | WechatHtmlValidationIssue>>([])
+  const [pendingPublicationCopy, setPendingPublicationCopy] = useState<{ html: string; plainText: string }>()
   const [renameTarget, setRenameTarget] = useState<ArticleItem>()
   const [renameTitle, setRenameTitle] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ArticleItem>()
-  const [wechatExtractOpen, setWechatExtractOpen] = useState(false)
-  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false)
   const [softwareSettingsOpen, setSoftwareSettingsOpen] = useState(false)
   const [imageSaveDirectory, setImageSaveDirectory] = useState('')
   const [softwareSettingsBusy, setSoftwareSettingsBusy] = useState(false)
-  const [resourceAssets, setResourceAssets] = useState<ImageAsset[]>([])
-  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
-  const [articleVersions, setArticleVersions] = useState<ArticleVersion[]>([])
-  const [wechatSavePolicy, setWechatSavePolicy] = useState<WechatArticleSavePolicy>('ask')
   const [storageReady, setStorageReady] = useState(repository === null)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [savedAt, setSavedAt] = useState<Date>()
-  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({})
-  const [resourceAssetUrls, setResourceAssetUrls] = useState<Record<string, string>>({})
-  const resourceObjectUrlsRef = useRef<string[]>([])
   const sidebarToggleStarted = useRef(false)
   const previewArticleRef = useRef<HTMLElement>(null)
   const editorPanelRef = useRef<EditorPanelHandle>(null)
   const previewPanelRef = useRef<PreviewPanelHandle>(null)
-  const latestSnapshotRef = useRef({ articles: articleList, selectedId, styles: [] as StylePreset[], templates: [] as ArticleTemplate[], components: [] as ContentComponent[], wechatArticleSavePolicy: wechatSavePolicy, syncEnabled })
-  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const versionWriteQueueRef = useRef(createVersionWriteQueue())
-  const versionBaselinesRef = useRef(new Map<string, ArticleVersion>(articles.map((article) => [article.id, {
-    id: `baseline-${article.id}`, articleId: article.id, title: article.title, content: article.content, styleId: article.styleId,
-    styleSnapshot: builtInStylePresets.find((style) => style.id === (article.styleId ?? 'default')), createdAt: new Date().toISOString(), reason: 'automatic' as const,
-  }])))
-  const saveRequestRef = useRef(0)
-  const mountedRef = useRef(true)
+  const copyPreparationRequestRef = useRef(0)
+  const latestPublicationVersionRef = useRef('')
   const selectedArticle = articleList.find((article) => article.id === selectedId)
   const previousSelectedArticleRef = useRef<ArticleItem | undefined>(selectedArticle)
   const content = selectedArticle?.content ?? ''
+  const updateContent = (nextContent: string) => {
+    setSelectedComponentText('')
+    setArticleList((current) => current.map((article) => {
+      if (article.id !== selectedId) return article
+      const heading = nextContent.match(/^#\s+(.+)$/m)?.[1]?.trim()
+      return {
+        ...article,
+        content: nextContent,
+        date: '刚刚',
+        title: article.titleMode === 'auto' && heading ? heading.replace(/\s+#+$/, '') : article.title,
+      }
+    }))
+  }
+  const {
+    assetLibraryOpen,
+    setAssetLibraryOpen,
+    resourceAssets,
+    assetUrls,
+    resourceAssetUrls,
+    importImageFiles,
+    openAssetLibrary,
+    insertStoredAsset,
+    saveRemoteAsset,
+    importNetworkImage,
+    removeAssetFromCurrentArticle,
+    deleteUnusedAsset,
+  } = useAssets({
+    repository: imageRepository,
+    articles: articleList,
+    selectedId,
+    content,
+    imageFetcher: services?.imageFetcher,
+    onInsertText: (markdown) => editorPanelRef.current?.insertText(markdown),
+    onContentChange: updateContent,
+    onNotify: (message) => {
+      setToastMessage(message)
+      setToastOpen(true)
+    },
+  })
   const previewMarkdown = useMemo(() => replaceImageAssetUrls(content, assetUrls), [assetUrls, content])
   const activeStyleId = selectedArticle?.styleId ?? 'default'
   const activeStyle = stylePresets.find((preset) => preset.id === activeStyleId) ?? builtInStylePresets[0]
-  const activeTemplate = templates.find((template) => template.id === selectedArticle?.templateId) ?? builtInTemplates[0]
+  const activeLayoutId = selectedArticle?.layoutId ?? 'standard'
   const previewStyle = styleDraft ?? activeStyle
-  latestSnapshotRef.current = {
+  const {
+    wechatExtractOpen,
+    setWechatExtractOpen,
+    wechatSavePolicy,
+    setWechatSavePolicy,
+    saveWechatArticle,
+    applyWechatStyle,
+    mergeWechatStyle,
+    saveWechatStyle,
+  } = useWechatExtraction({
+    extractor: wechatExtractor,
+    imageArchive: services?.imageArchive,
+    activeStyle,
+    styleDraft,
+    selectedId,
+    createArticleId,
+    saveRemoteAsset,
+    onArticleSaved: (article) => {
+      setArticleList((current) => [article, ...current])
+      setSelectedComponentText('')
+      setSelectedId(article.id)
+    },
+    onStyleDraftChange: setStyleDraft,
+    onStyleSaved: (style, articleId) => {
+      setStylePresets((current) => [...current, style])
+      setArticleList((current) => current.map((article) => article.id === articleId ? { ...article, styleId: style.id } : article))
+    },
+    onOpenLayoutSettings: () => setSettingsTab('layout'),
+    onNotify: (message) => {
+      setToastMessage(message)
+      setToastOpen(true)
+    },
+  })
+  const publicationVersion = JSON.stringify({ selectedId, content, previewMarkdown, previewStyle, layoutId: activeLayoutId, contentTemplateId: selectedArticle?.contentTemplateId, device })
+  latestPublicationVersionRef.current = publicationVersion
+  const workspaceSnapshot = useMemo<ArticleLibrarySnapshot>(() => ({
     articles: articleList,
     selectedId,
     styles: stylePresets.filter((preset) => !preset.builtIn),
@@ -134,47 +195,65 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     components: contentComponents.filter((component) => !component.builtIn),
     wechatArticleSavePolicy: wechatSavePolicy,
     syncEnabled,
-  }
+  }), [articleList, contentComponents, selectedId, stylePresets, syncEnabled, templates, wechatSavePolicy])
 
-  const enqueueSave = (snapshot = latestSnapshotRef.current) => {
-    if (!repository) return Promise.resolve()
-    const request = ++saveRequestRef.current
-    const operation = saveQueueRef.current
-      .catch(() => undefined)
-      .then(() => repository.save(snapshot))
-    saveQueueRef.current = operation
-    operation.then(() => {
-      if (!mountedRef.current || request !== saveRequestRef.current) return
-      setSaveStatus('saved')
-      setSavedAt(new Date())
-    }).catch(() => {
-      if (mountedRef.current && request === saveRequestRef.current) setSaveStatus('error')
-    })
-    return operation
-  }
-
-  const createDueAutomaticVersions = (snapshot = latestSnapshotRef.current) => {
-    if (!versionsRepository) return Promise.resolve()
-    return versionWriteQueueRef.current.run(async () => {
-      for (const article of snapshot.articles) {
-        const state = { ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')) }
-        const latest = (await versionsRepository.list(article.id))[0] ?? versionBaselinesRef.current.get(article.id)
-        if (!latest) {
-          versionBaselinesRef.current.set(article.id, { ...createArticleVersion(article.id, state, 'automatic'), id: `baseline-${article.id}` })
-        } else if (shouldCreateAutomaticVersion(latest, state)) {
-          await versionsRepository.save(createArticleVersion(article.id, state, 'automatic'))
-        }
+  const {
+    versionHistoryOpen,
+    setVersionHistoryOpen,
+    articleVersions,
+    resetBaselines,
+    saveVersionIfChanged,
+    createDueAutomaticVersions,
+    openVersionHistory,
+    saveCurrentVersion,
+    restoreArticleVersion,
+    deleteVersionsForArticle,
+    saveVersions,
+    deleteVersionsForArticles,
+  } = useVersions({
+    repository: versionsRepository,
+    articles: articleList,
+    selectedId,
+    stylePresets,
+    storageReady,
+    onSelectArticle: setSelectedId,
+    onRestoreVersion: (target) => {
+      let restoredStyleId = target.styleId
+      if (target.styleSnapshot) {
+        styleSequence += 1
+        restoredStyleId = `restored-style-${Date.now()}-${styleSequence}`
+        const restoredStyle = { ...target.styleSnapshot, id: restoredStyleId, name: `${target.styleSnapshot.name}（历史）`, builtIn: false }
+        setStylePresets((current) => [...current, restoredStyle])
       }
-    })
-  }
+      setArticleList((current) => current.map((article) => article.id === target.articleId ? {
+        ...article,
+        title: target.title,
+        titleMode: 'manual',
+        content: target.content,
+        styleId: restoredStyleId,
+        date: '刚刚',
+      } : article))
+    },
+    onNotify: (message) => {
+      setToastMessage(message)
+      setToastOpen(true)
+    },
+  })
 
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      if (typeof URL.revokeObjectURL === 'function') resourceObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
-    }
-  }, [])
+  const {
+    saveStatus,
+    savedAt,
+    latestSnapshotRef,
+    markSaved,
+    markError,
+    setSaveStatus,
+  } = useAutosave({
+    repository,
+    snapshot: workspaceSnapshot,
+    enabled: storageReady,
+    delay: saveDelay,
+    onSaved: createDueAutomaticVersions,
+  })
 
   useEffect(() => {
     if (runtime !== 'desktop') return
@@ -187,14 +266,15 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     if (!repository) return
     let active = true
     repository.load()
-      .then((snapshot) => {
+      .then((storedSnapshot) => {
         if (!active) return
+        const snapshot = storedSnapshot ? migrateLegacyTemplateData(storedSnapshot) : null
         if (snapshot?.articles.length) {
           const restoredStyles = [...builtInStylePresets, ...(snapshot.styles ?? []).filter((preset) => !preset.builtIn)]
           const restoredArticles = replaceLegacyDemoArticles(snapshot.articles)
           setArticleList(restoredArticles)
           setStylePresets(restoredStyles)
-          setTemplates([...builtInTemplates, ...(snapshot.templates ?? []).filter((template) => !template.builtIn)])
+          setTemplates([...builtInContentTemplates, ...(snapshot.templates ?? []).filter((template) => !template.builtIn)])
           setContentComponents([...builtInContentComponents, ...(snapshot.components ?? []).filter((component) => !component.builtIn)])
           setWechatSavePolicy(snapshot.wechatArticleSavePolicy ?? 'ask')
           setSyncEnabled(snapshot.syncEnabled ?? true)
@@ -203,78 +283,18 @@ export function App({ services, articleRepository, assetRepository, versionRepos
             : restoredArticles[0].id
           setSelectedId(restoredId)
           previousSelectedArticleRef.current = restoredArticles.find((article) => article.id === restoredId)
-          const observedAt = new Date().toISOString()
-          versionBaselinesRef.current = new Map(restoredArticles.map((article) => [article.id, {
-            id: `baseline-${article.id}`, articleId: article.id, title: article.title, content: article.content, styleId: article.styleId,
-            styleSnapshot: restoredStyles.find((style) => style.id === (article.styleId ?? 'default')), createdAt: observedAt, reason: 'automatic' as const,
-          }]))
+          resetBaselines(restoredArticles, restoredStyles)
         }
-        setSaveStatus('saved')
-        setSavedAt(new Date())
+        markSaved()
       })
       .catch(() => {
-        if (active) setSaveStatus('error')
+        if (active) markError()
       })
       .finally(() => {
         if (active) setStorageReady(true)
       })
     return () => { active = false }
-  }, [repository])
-
-  useEffect(() => {
-    if (!repository || !storageReady) return
-    const timeout = window.setTimeout(() => {
-      const snapshot = {
-        articles: articleList,
-        selectedId,
-        styles: stylePresets.filter((preset) => !preset.builtIn),
-        templates: templates.filter((template) => !template.builtIn),
-        components: contentComponents.filter((component) => !component.builtIn),
-        wechatArticleSavePolicy: wechatSavePolicy,
-        syncEnabled,
-      }
-      void enqueueSave(snapshot).then(() => createDueAutomaticVersions(snapshot))
-    }, saveDelay)
-    return () => window.clearTimeout(timeout)
-  }, [articleList, contentComponents, repository, saveDelay, selectedId, storageReady, stylePresets, syncEnabled, templates, versionsRepository, wechatSavePolicy])
-
-  useEffect(() => {
-    if (!storageReady || !versionsRepository) return
-    const interval = window.setInterval(() => { void createDueAutomaticVersions() }, 60_000)
-    return () => window.clearInterval(interval)
-  }, [storageReady, stylePresets, versionsRepository])
-
-  useEffect(() => {
-    if (!repository || !storageReady) return
-    const flush = () => { void enqueueSave(latestSnapshotRef.current) }
-    window.addEventListener('pagehide', flush)
-    return () => window.removeEventListener('pagehide', flush)
-  }, [repository, storageReady])
-
-  useEffect(() => {
-    let active = true
-    const objectUrls: string[] = []
-    const ids = collectImageAssetIds(content)
-    if (!imageRepository || ids.length === 0) {
-      setAssetUrls({})
-      return () => { active = false }
-    }
-    Promise.all(ids.map(async (id) => [id, await imageRepository.get(id)] as const)).then((entries) => {
-      if (!active) return
-      const urls: Record<string, string> = {}
-      entries.forEach(([id, asset]) => {
-        if (!asset || typeof URL.createObjectURL !== 'function') return
-        const url = URL.createObjectURL(asset.blob)
-        objectUrls.push(url)
-        urls[id] = url
-      })
-      setAssetUrls(urls)
-    }).catch(() => { if (active) setAssetUrls({}) })
-    return () => {
-      active = false
-      if (typeof URL.revokeObjectURL === 'function') objectUrls.forEach((url) => URL.revokeObjectURL(url))
-    }
-  }, [content, imageRepository])
+  }, [markError, markSaved, repository, resetBaselines])
 
   useEffect(() => {
     const previous = previousSelectedArticleRef.current
@@ -317,56 +337,6 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     })
   }
 
-  const saveVersionIfChanged = async (reason: ArticleVersionReason, article: ArticleItem) => {
-    if (!versionsRepository || !article.content.trim()) return
-    const state = { ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')) }
-    return versionWriteQueueRef.current.run(async () => {
-      const latest = (await versionsRepository.list(article.id))[0]
-      if (latest?.title === state.title && latest.content === state.content && latest.styleId === state.styleId && JSON.stringify(latest.styleSnapshot) === JSON.stringify(state.styleSnapshot)) return
-      await versionsRepository.save(createArticleVersion(article.id, state, reason))
-      if (versionHistoryOpen && article.id === selectedId) setArticleVersions(await versionsRepository.list(article.id))
-    })
-  }
-
-  const openVersionHistory = (articleId = selectedId) => {
-    if (articleId !== selectedId && articleList.some((article) => article.id === articleId)) setSelectedId(articleId)
-    setVersionHistoryOpen(true)
-    void versionsRepository?.list(articleId).then(setArticleVersions)
-  }
-
-  const saveCurrentVersion = async () => {
-    const article = articleList.find((item) => item.id === selectedId)
-    if (!article || !versionsRepository) return
-    const operation = versionWriteQueueRef.current.run(() => versionsRepository.save(createArticleVersion(article.id, {
-      ...article, styleSnapshot: stylePresets.find((style) => style.id === (article.styleId ?? 'default')),
-    }, 'manual')))
-    await operation
-    setArticleVersions(await versionsRepository.list(article.id))
-    setToastMessage('已保存当前版本')
-    setToastOpen(true)
-  }
-
-  const restoreArticleVersion = async (versionId: string) => {
-    if (!versionsRepository || !selectedArticle) return
-    const target = await versionsRepository.get(versionId)
-    if (!target || target.articleId !== selectedArticle.id) return
-    await saveVersionIfChanged('restore', selectedArticle)
-    let restoredStyleId = target.styleId
-    if (target.styleSnapshot) {
-      styleSequence += 1
-      restoredStyleId = `restored-style-${Date.now()}-${styleSequence}`
-      const restoredStyle = { ...target.styleSnapshot, id: restoredStyleId, name: `${target.styleSnapshot.name}（历史）`, builtIn: false }
-      setStylePresets((current) => [...current, restoredStyle])
-    }
-    setArticleList((current) => current.map((article) => article.id === target.articleId ? {
-      ...article, title: target.title, titleMode: 'manual', content: target.content, styleId: restoredStyleId, date: '刚刚',
-    } : article))
-    setSaveStatus('saving')
-    setArticleVersions(await versionsRepository.list(target.articleId))
-    setToastMessage('已恢复历史版本')
-    setToastOpen(true)
-  }
-
   const openStyleLibrary = () => {
     setRightSidebarOpen(true)
     setSettingsTab('layout')
@@ -376,65 +346,6 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const openPageSettings = () => {
     setRightSidebarOpen(true)
     setSettingsTab('page')
-  }
-
-  const updateContent = (nextContent: string) => {
-    setSelectedComponentText('')
-    setSaveStatus('saving')
-    setArticleList((current) => current.map((article) => {
-      if (article.id !== selectedId) return article
-      const heading = /^#\s+(.+?)\s*$/m.exec(nextContent)?.[1]
-      return {
-        ...article,
-        content: nextContent,
-        date: '刚刚',
-        title: article.titleMode === 'auto' && heading ? heading.replace(/\s+#+$/, '') : article.title,
-      }
-    }))
-  }
-
-  const importImageFiles = async (files: File[], source: 'file' | 'paste' | 'drop') => {
-    if (!imageRepository) {
-      setToastMessage('当前环境无法保存图片')
-      setToastOpen(true)
-      return
-    }
-    try {
-      const assets = files.map((file) => createStoredImageAsset(file, source))
-      await Promise.all(assets.map((asset) => imageRepository.save(asset)))
-      setResourceAssets((current) => [...assets.map(({ blob: _blob, ...asset }) => asset), ...current])
-      editorPanelRef.current?.insertText(assets.map((asset) => createImageMarkdown(asset.id, asset.name.replace(/\.[^.]+$/, ''))).join('\n\n'))
-      setToastMessage(assets.length > 1 ? `已插入 ${assets.length} 张图片` : '图片已插入')
-    } catch (reason) {
-      setToastMessage(reason instanceof Error ? reason.message : '图片插入失败')
-    }
-    setToastOpen(true)
-  }
-
-  const refreshAssetLibrary = async () => {
-    if (!imageRepository) return
-    const globallyUsed = new Set(articleList.flatMap((article) => collectImageAssetIds(article.content)))
-    const stored = await imageRepository.list()
-    await Promise.all(stored.map((asset) => imageRepository.setUnused(asset.id, !globallyUsed.has(asset.id))))
-    setResourceAssets(stored.map((asset) => ({ ...asset, unused: !globallyUsed.has(asset.id) })))
-    if (typeof URL.createObjectURL === 'function') {
-      if (typeof URL.revokeObjectURL === 'function') resourceObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
-      const entries = await Promise.all(stored.map(async (asset) => [asset.id, await imageRepository.get(asset.id)] as const))
-      const urls: Record<string, string> = {}
-      resourceObjectUrlsRef.current = []
-      entries.forEach(([id, storedAsset]) => {
-        if (!storedAsset) return
-        const objectUrl = URL.createObjectURL(storedAsset.blob)
-        urls[id] = objectUrl
-        resourceObjectUrlsRef.current.push(objectUrl)
-      })
-      setResourceAssetUrls(urls)
-    }
-  }
-
-  const openAssetLibrary = () => {
-    setAssetLibraryOpen(true)
-    void refreshAssetLibrary()
   }
 
   const openSoftwareSettings = async () => {
@@ -485,50 +396,6 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       setToastMessage('无法打开图片保存位置')
       setToastOpen(true)
     }
-  }
-
-  const insertStoredAsset = (id: string) => {
-    const asset = resourceAssets.find((candidate) => candidate.id === id)
-    if (!asset) return
-    editorPanelRef.current?.insertText(createImageMarkdown(asset.id, asset.name.replace(/\.[^.]+$/, '')))
-    void imageRepository?.setUnused(id, false)
-  }
-
-  const saveRemoteAsset = async (url: string, source: 'remote' | 'wechat') => {
-    if (!imageRepository) throw new Error('当前环境无法保存图片')
-    const asset = await fetchImageAsset(url, source, {
-      fetcher: services?.imageFetcher ?? (async (target) => fetch(`/api/assets/fetch?url=${encodeURIComponent(String(target))}`)),
-    })
-    await imageRepository.save(asset)
-    return asset
-  }
-
-  const importNetworkImage = async (url: string, source: 'remote' | 'wechat' = 'remote') => {
-    if (!imageRepository) return
-    try {
-      const asset = await saveRemoteAsset(url, source)
-      const { blob: _blob, ...assetMetadata } = asset
-      setResourceAssets((current) => [assetMetadata, ...current])
-      editorPanelRef.current?.insertText(createImageMarkdown(asset.id, asset.name.replace(/\.[^.]+$/, '')))
-      setToastMessage('网络图片已保存并插入')
-    } catch (reason) {
-      setToastMessage(reason instanceof Error ? reason.message : '网络图片下载失败')
-    }
-    setToastOpen(true)
-  }
-
-  const removeAssetFromCurrentArticle = (id: string) => {
-    updateContent(removeImageAssetReference(content, id))
-    const usedElsewhere = articleList.some((article) => article.id !== selectedId && collectImageAssetIds(article.content).includes(id))
-    void imageRepository?.setUnused(id, !usedElsewhere)
-    setResourceAssets((current) => current.map((asset) => asset.id === id ? { ...asset, unused: !usedElsewhere } : asset))
-  }
-
-  const deleteUnusedAsset = async (id: string) => {
-    await imageRepository?.delete(id)
-    setResourceAssets((current) => current.filter((asset) => asset.id !== id))
-    setToastMessage('未使用图片已永久删除')
-    setToastOpen(true)
   }
 
   const assignStyleToCurrentArticle = (styleId: string) => {
@@ -654,7 +521,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       title: '未命名文章',
       date: '刚刚',
       content: '',
-      templateId: 'blank',
+      layoutId: 'standard',
       source: 'local',
       status: 'draft',
       titleMode: 'auto',
@@ -665,14 +532,37 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setSaveStatus('saving')
   }
 
-  function applyTemplateToCurrentArticle(templateId: string) {
-    const template = templates.find((item) => item.id === templateId)
-    if (!template || !selectedArticle) return
+  function applyLayoutToCurrentArticle(layoutId: ArticleLayoutId) {
+    const layout = builtInLayouts.find((item) => item.id === layoutId)
+    if (!layout || !selectedArticle) return
     setArticleList((current) => current.map((article) => article.id === selectedId
-      ? { ...article, templateId: template.id, date: '刚刚' }
+      ? { ...article, layoutId, date: '刚刚' }
       : article))
     setSaveStatus('saving')
-    setToastMessage(`已应用“${template.name}”`)
+    setToastMessage(`已应用“${layout.name}”`)
+    setToastOpen(true)
+  }
+
+  function createArticleFromTemplate(templateId: string) {
+    const template = templates.find((item) => item.id === templateId)
+    if (!template || !selectedArticle) return
+    const title = template.content.match(/^#\s+(.+)$/m)?.[1]?.trim() || template.name
+    const article: ArticleItem = {
+      id: createArticleId(),
+      title,
+      date: '刚刚',
+      content: template.content,
+      layoutId: template.layoutId,
+      contentTemplateId: template.id,
+      source: 'local',
+      status: 'draft',
+      titleMode: 'auto',
+    }
+    setArticleList((current) => [article, ...current])
+    setSelectedComponentText('')
+    setSelectedId(article.id)
+    setSaveStatus('saving')
+    setToastMessage(`已用“${template.name}”新建文章`)
     setToastOpen(true)
   }
 
@@ -702,7 +592,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     const name = templateName.trim()
     if (!name) return
     templateSequence += 1
-    const template = createCustomTemplate(`template-${Date.now()}-${templateSequence}`, name, content, activeTemplate.layout ?? 'standard')
+    const template = createCustomContentTemplate(`template-${Date.now()}-${templateSequence}`, name, content, activeLayoutId)
     setTemplates((current) => [...current, template])
     setSaveTemplateOpen(false)
     setSaveStatus('saving')
@@ -811,7 +701,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         setSelectedId(fallback.id)
       }
     }
-    void versionWriteQueueRef.current.run(async () => { await versionsRepository?.deleteForArticle(deletedId) })
+    void deleteVersionsForArticle(deletedId)
     setDeleteTarget(undefined)
     setSaveStatus('saving')
   }
@@ -837,93 +727,18 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     }
   }
 
-  const saveWechatArticle = async (extraction: ExtractedWechatArticle) => {
-    const downloadedAssets: StoredImageAsset[] = []
-    const localized = await localizeRemoteMarkdownImages(
-      extraction.markdown,
-      async (url) => {
-        const asset = await saveRemoteAsset(url, 'wechat')
-        downloadedAssets.push(asset)
-        return asset.id
-      },
-    )
-    let archived: { directory: string; saved: number } | undefined
-    let archiveFailed = false
-    if (services?.imageArchive && downloadedAssets.length) {
-      try {
-        archived = await services.imageArchive.saveArticle(extraction.title, await Promise.all(downloadedAssets.map(async (asset) => ({
-          name: asset.name,
-          mimeType: asset.mimeType,
-          bytes: new Uint8Array(await asset.blob.arrayBuffer()),
-        }))))
-      } catch {
-        archiveFailed = true
-      }
-    }
-    const markdown = /^#\s+/m.test(localized.markdown)
-      ? localized.markdown
-      : `# ${extraction.title}\n\n${localized.markdown}`.trim()
-    const article: ArticleItem = {
-      id: createArticleId(),
-      title: extraction.title,
-      date: '刚刚',
-      content: markdown,
-      source: 'wechat',
-      status: 'draft',
-      titleMode: 'manual',
-      author: extraction.author,
-      sourceUrl: extraction.sourceUrl,
-      importedAt: new Date().toISOString(),
-      originalHtml: extraction.html,
-    }
-    setArticleList((current) => [article, ...current])
-    setSelectedComponentText('')
-    setSelectedId(article.id)
-    setSaveStatus('saving')
-    setToastMessage(archiveFailed
-      ? '文章已保存，但图片写入磁盘失败，请检查软件设置中的保存位置'
-      : archived
-        ? `文章已保存，${archived.saved} 张图片已保存到 ${archived.directory}`
-        : localized.failedUrls.length
-          ? `文章已保存，${localized.failedUrls.length} 张图片下载失败并保留原链接`
-          : `已保存公众号文章“${extraction.title}”`)
-    setToastOpen(true)
-  }
-
-  const applyWechatStyle = (extraction: ExtractedWechatArticle, selectedPaths: StyleValuePath[]) => {
-    setStyleDraft(applyExtractedStyle(activeStyle, extraction, selectedPaths))
-    setSettingsTab('layout')
-    setToastMessage(selectedPaths.length === extraction.tokens.length ? '已应用整套提取风格' : '已应用所选提取样式')
-    setToastOpen(true)
-  }
-
-  const mergeWechatStyle = (extraction: ExtractedWechatArticle, selectedPaths: StyleValuePath[]) => {
-    setStyleDraft(applyExtractedStyle(styleDraft ?? activeStyle, extraction, selectedPaths))
-    setSettingsTab('layout')
-    setToastMessage('已合并到当前风格，保存后长期使用')
-    setToastOpen(true)
-  }
-
-  const saveWechatStyle = (extraction: ExtractedWechatArticle, selectedPaths: StyleValuePath[], name: string) => {
-    styleSequence += 1
-    const mapped = applyExtractedStyle(activeStyle, extraction, selectedPaths)
-    const saved = duplicateStylePreset(mapped, `wechat-style-${Date.now()}-${styleSequence}`, name)
-    saved.description = `提取自“${extraction.title}”`
-    setStylePresets((current) => [...current, saved])
-    setArticleList((current) => current.map((article) => article.id === selectedId ? { ...article, styleId: saved.id } : article))
-    setStyleDraft(null)
-    setSaveStatus('saving')
-    setToastMessage(`已保存并应用“${name}”`)
-    setToastOpen(true)
-  }
-
-  const performCopy = async () => {
+  const performCopy = async (prepared = pendingPublicationCopy) => {
     if (!previewArticleRef.current) return
     try {
-      await copyPreviewArticle(previewArticleRef.current, content)
+      const payload = prepared ?? {
+        html: await preparePreviewArticleForClipboard(previewArticleRef.current),
+        plainText: content,
+      }
+      await copyPreparedArticle(payload.html, payload.plainText)
+      setPendingPublicationCopy(undefined)
       setToastMessage('已复制到剪贴板')
-    } catch {
-      setToastMessage('复制失败，请检查剪贴板权限')
+    } catch (error) {
+      setToastMessage(error instanceof Error && error.message.includes('富文本') ? error.message : '复制失败，请检查剪贴板权限')
     }
     setToastOpen(true)
   }
@@ -937,12 +752,40 @@ export function App({ services, articleRepository, assetRepository, versionRepos
 
     if (!previewArticleRef.current) return
 
-    const issues = inspectPublication(previewArticleRef.current, content)
-    if (issues.length) {
-      setPublicationIssues(issues)
-      return
+    const request = ++copyPreparationRequestRef.current
+    const sourceHtml = serializePreviewArticle(previewArticleRef.current)
+    const requestedArticleId = selectedId
+    const requestedContent = content
+    const requestedPublicationVersion = publicationVersion
+    const requestedViewport = `${window.innerWidth}:${window.innerHeight}:${window.devicePixelRatio}`
+    try {
+      const payload = {
+        html: await prepareSerializedArticleForClipboard(sourceHtml),
+        plainText: requestedContent,
+      }
+      if (request !== copyPreparationRequestRef.current) return
+      const currentArticle = latestSnapshotRef.current.articles.find((article) => article.id === requestedArticleId)
+      const currentViewport = `${window.innerWidth}:${window.innerHeight}:${window.devicePixelRatio}`
+      if (latestSnapshotRef.current.selectedId !== requestedArticleId || currentArticle?.content !== requestedContent || latestPublicationVersionRef.current !== requestedPublicationVersion || currentViewport !== requestedViewport) {
+        setPendingPublicationCopy(undefined)
+        setToastMessage('文章已发生变化，请重新复制')
+        setToastOpen(true)
+        return
+      }
+      const issues = [
+        ...inspectPublication(previewArticleRef.current, content),
+        ...validateWechatHtml(payload.html),
+      ]
+      if (issues.length) {
+        setPendingPublicationCopy(payload)
+        setPublicationIssues(issues)
+        return
+      }
+      await performCopy(payload)
+    } catch {
+      setToastMessage('复制前检查失败，请确认图片资源可以读取')
+      setToastOpen(true)
     }
-    await performCopy()
   }
 
   const exportMarkdown = async () => {
@@ -1029,15 +872,12 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       })
       importedArticleIds.push(...merged.snapshot.articles.slice(0, imported.snapshot.articles.length).map(({ id }) => id))
       for (const asset of merged.assets) { await imageRepository?.save(asset); savedAssetIds.push(asset.id) }
-      const versionRestore = versionWriteQueueRef.current.run(async () => {
-        for (const version of merged.versions) await versionsRepository?.save(version)
-      })
-      await versionRestore
+      await saveVersions(merged.versions)
       await repository?.save(merged.snapshot)
       setArticleList(merged.snapshot.articles)
       setSelectedId(merged.snapshot.selectedId)
       setStylePresets([...builtInStylePresets, ...(merged.snapshot.styles ?? []).filter((preset) => !preset.builtIn)])
-      setTemplates([...builtInTemplates, ...(merged.snapshot.templates ?? []).filter((template) => !template.builtIn)])
+      setTemplates([...builtInContentTemplates, ...(merged.snapshot.templates ?? []).filter((template) => !template.builtIn)])
       setContentComponents([...builtInContentComponents, ...(merged.snapshot.components ?? []).filter((component) => !component.builtIn)])
       setWechatSavePolicy(merged.snapshot.wechatArticleSavePolicy ?? 'ask')
       setSyncEnabled(merged.snapshot.syncEnabled ?? true)
@@ -1045,9 +885,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       setToastMessage(`已安全合并 ${imported.snapshot.articles.length} 篇文章和 ${imported.assets.length} 张图片`)
     } catch (reason) {
       await Promise.all(savedAssetIds.map((id) => imageRepository?.delete(id)))
-      await versionWriteQueueRef.current.run(async () => {
-        await Promise.all(importedArticleIds.map((id) => versionsRepository?.deleteForArticle(id)))
-      })
+      await deleteVersionsForArticles(importedArticleIds)
       setToastMessage(reason instanceof Error ? reason.message : '备份恢复失败')
     }
     setToastOpen(true)
@@ -1086,8 +924,11 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         activeStyleId={activeStyle.id}
         onStyleSelect={requestStyleApplication}
         onManageStyles={openStyleLibrary}
-        templates={templates}
-        onTemplateSelect={applyTemplateToCurrentArticle}
+        layouts={builtInLayouts}
+        activeLayoutId={activeLayoutId}
+        onLayoutSelect={applyLayoutToCurrentArticle}
+        contentTemplates={templates}
+        onContentTemplateSelect={createArticleFromTemplate}
         onSaveCurrentTemplate={openSaveTemplate}
         onManageTemplates={() => setTemplateLibraryOpen(true)}
         onOpenPreviewSettings={openPageSettings}
@@ -1147,7 +988,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           onOpenPageSettings={openPageSettings}
           onCopy={() => { void copyArticle() }}
           stylePreset={previewStyle}
-          templateLayout={activeTemplate.layout ?? 'standard'}
+          layoutId={activeLayoutId}
         />
         <SettingsPanel
           open={settingsOpen}
@@ -1180,7 +1021,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       </div>
       <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen} title="保存为模板">
         <div className={styles.draftDialogBody}>
-          <p>保存当前文章排版，之后可从顶部“模板”菜单应用到任意文章。</p>
+          <p>保存当前正文和版式，之后可从顶部“模板”菜单用它新建文章。</p>
           <label><span>模板名称</span><Input aria-label="模板名称" value={templateName} onChange={(event) => setTemplateName(event.target.value)} /></label>
           <div><Button onClick={() => setSaveTemplateOpen(false)}>取消</Button><Button variant="primary" disabled={!templateName.trim()} onClick={saveCurrentTemplate}>保存模板</Button></div>
         </div>
@@ -1189,7 +1030,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         open={templateLibraryOpen}
         onOpenChange={setTemplateLibraryOpen}
         templates={templates}
-        onUse={applyTemplateToCurrentArticle}
+        onUse={createArticleFromTemplate}
         onRename={renameTemplate}
         onDelete={deleteTemplate}
       />
@@ -1232,12 +1073,21 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         onSaveArticle={saveWechatArticle}
         onSavePolicyChange={(policy) => { setWechatSavePolicy(policy); setSaveStatus('saving') }}
       />
-      <Dialog open={publicationIssues.length > 0} onOpenChange={(open) => { if (!open) setPublicationIssues([]) }} title="发布前检查">
+      <Dialog open={publicationIssues.length > 0} onOpenChange={(open) => { if (!open) { setPublicationIssues([]); setPendingPublicationCopy(undefined) } }} title="发布前检查">
         <div className={styles.draftDialogBody}>
-          <p>复制前发现以下问题，建议处理后再粘贴到公众号：</p>
-          <ul>{publicationIssues.map((issue) => <li key={issue.code}>{issue.message}</li>)}</ul>
+          <p>复制前发现以下兼容性问题。微信公众号可能清洗部分结构或样式，请根据建议处理：</p>
+          <ul className={styles.publicationIssues}>{publicationIssues.map((issue, index) => {
+            const level = 'level' in issue ? issue.level : 'error'
+            const suggestion = 'suggestion' in issue ? issue.suggestion : undefined
+            const label = level === 'error' ? '错误' : level === 'warning' ? '警告' : '提示'
+            return <li key={`${issue.code}-${index}`} data-level={level}>
+              <strong>{label}</strong>
+              <span>{issue.message}</span>
+              {suggestion ? <small>{suggestion}</small> : null}
+            </li>
+          })}</ul>
           <div>
-            <Button onClick={() => setPublicationIssues([])}>返回检查</Button>
+            <Button onClick={() => { setPublicationIssues([]); setPendingPublicationCopy(undefined) }}>返回检查</Button>
             <Button variant="primary" onClick={() => { setPublicationIssues([]); void performCopy() }}>仍然复制</Button>
           </div>
         </div>

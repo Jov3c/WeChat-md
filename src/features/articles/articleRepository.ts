@@ -1,5 +1,6 @@
 import type { StylePreset } from '../styles/stylePresets'
-import type { ArticleTemplate } from '../templates/templatePresets'
+import type { ArticleContentTemplate } from '../templates/templatePresets'
+import type { ArticleLayoutId } from '../layouts/articleLayouts'
 import type { ContentComponent } from '../components/contentComponents'
 import { openWechatDatabase, WORKSPACE_STORE } from '../storage/browserDatabase'
 
@@ -9,6 +10,9 @@ export interface StoredArticle {
   date: string
   content: string
   styleId?: string
+  layoutId?: ArticleLayoutId
+  contentTemplateId?: string
+  /** @deprecated 旧工作区字段，由加载迁移转换。 */
   templateId?: string
   favorite?: boolean
   source?: 'local' | 'imported' | 'wechat'
@@ -24,7 +28,7 @@ export interface ArticleLibrarySnapshot {
   articles: StoredArticle[]
   selectedId: string
   styles?: StylePreset[]
-  templates?: ArticleTemplate[]
+  templates?: ArticleContentTemplate[]
   components?: ContentComponent[]
   wechatArticleSavePolicy?: 'ask' | 'always' | 'never'
   syncEnabled?: boolean
