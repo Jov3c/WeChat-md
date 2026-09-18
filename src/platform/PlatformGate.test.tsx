@@ -6,7 +6,7 @@ import type { RuntimeServices } from './contracts'
 import { PlatformGate } from './PlatformGate'
 
 const services: RuntimeServices = {
-  kind: 'desktop', articleRepository: null, assetRepository: null, versionRepository: null,
+  kind: 'desktop', articleRepository: null, assetRepository: null, versionRepository: null, recoveryRepository: null,
   extractWechatArticle: async () => { throw new Error('not used') },
   files: {
     openText: async () => null, openBytes: async () => null,

@@ -16,7 +16,7 @@ describe('image asset imports', () => {
   })
 
   it('downloads a network image and preserves its source url', async () => {
-    const fetcher = async () => new Response(new Blob(['remote'], { type: 'image/webp' }), { headers: { 'content-type': 'image/webp' } })
+    const fetcher = async () => new Response(new TextEncoder().encode('remote'), { headers: { 'content-type': 'image/webp' } })
 
     const asset = await fetchImageAsset('https://img.example.com/cover.webp', 'remote', { fetcher, id: 'remote-1', now: '2026-09-12T00:00:00.000Z' })
 

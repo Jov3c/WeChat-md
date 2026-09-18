@@ -1,7 +1,8 @@
-export const DATABASE_VERSION = 3
+export const DATABASE_VERSION = 4
 export const WORKSPACE_STORE = 'workspace'
 export const ASSET_STORE = 'assets'
 export const VERSION_STORE = 'versions'
+export const RECOVERY_STORE = 'recovery'
 
 export function openWechatDatabase(indexedDB: IDBFactory, databaseName: string) {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -16,6 +17,9 @@ export function openWechatDatabase(indexedDB: IDBFactory, databaseName: string) 
       if (!request.result.objectStoreNames.contains(VERSION_STORE)) {
         const versions = request.result.createObjectStore(VERSION_STORE, { keyPath: 'id' })
         versions.createIndex('articleId', 'articleId')
+      }
+      if (!request.result.objectStoreNames.contains(RECOVERY_STORE)) {
+        request.result.createObjectStore(RECOVERY_STORE)
       }
     })
     request.addEventListener('success', () => resolve(request.result))

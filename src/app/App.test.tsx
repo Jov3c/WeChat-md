@@ -5,6 +5,7 @@ import { afterEach, vi } from 'vitest'
 import { createMemoryArticleRepository } from '../features/articles/articleRepository'
 import { createMemoryAssetRepository } from '../features/assets/assetRepository'
 import { createMemoryVersionRepository } from '../features/versions/versionRepository'
+import { createMemoryRecoveryRepository } from '../features/recovery/recoveryRepository'
 import type { ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
 import type { FileService, RuntimeServices } from '../platform/contracts'
 import { App } from './App'
@@ -57,6 +58,7 @@ describe('WeChat MD application shell', () => {
     articleRepository: createMemoryArticleRepository(),
     assetRepository: createMemoryAssetRepository(),
     versionRepository: createMemoryVersionRepository(),
+    recoveryRepository: null,
     extractWechatArticle: async () => { throw new Error('not used') },
     files,
   })
@@ -76,6 +78,7 @@ describe('WeChat MD application shell', () => {
     const services: RuntimeServices = {
       kind: 'desktop', articleRepository,
       assetRepository: createMemoryAssetRepository(), versionRepository: createMemoryVersionRepository(),
+      recoveryRepository: null,
       extractWechatArticle: async () => { throw new Error('not used') },
       files: unusedFileService(),
     }
@@ -461,6 +464,26 @@ describe('WeChat MD application shell', () => {
     render(<App articleRepository={repository} saveDelay={0} />)
 
     expect(await screen.findByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 已恢复内容')
+  })
+
+  it('offers and restores a newer crash recovery draft on startup', async () => {
+    const user = userEvent.setup()
+    const articleRepository = createMemoryArticleRepository({
+      articles: [{ id: 'persisted', title: '正式标题', date: '刚刚', content: '# 正式正文' }],
+      selectedId: 'persisted',
+    })
+    const recoveryRepository = createMemoryRecoveryRepository({
+      articleId: 'persisted', title: '恢复标题', content: '# 异常退出前内容',
+      updatedAt: '2026-09-18T08:00:05.000Z', savedAt: '2026-09-18T08:00:00.000Z',
+    })
+
+    render(<App articleRepository={articleRepository} recoveryRepository={recoveryRepository} />)
+
+    const dialog = await screen.findByRole('dialog', { name: '发现未保存的草稿' })
+    await user.click(within(dialog).getByRole('button', { name: '恢复草稿' }))
+
+    expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 异常退出前内容')
+    expect(screen.getByRole('button', { name: /^恢复标题，/ })).toBeVisible()
   })
 
   it('restores custom templates and content components with the workspace', async () => {
@@ -893,7 +916,7 @@ describe('WeChat MD application shell', () => {
     await user.click(screen.getByRole('button', { name: '复制到公众号' }))
     await waitFor(() => expect(fetchImage).toHaveBeenCalledOnce())
     fireEvent.change(screen.getByRole('textbox', { name: 'Markdown 内容' }), { target: { value: '# 新内容' } })
-    finishFetch(new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }))
+    finishFetch(new Response(new TextEncoder().encode('image'), { status: 200, headers: { 'content-type': 'image/png' } }))
 
     expect(await screen.findByText('文章已发生变化，请重新复制')).toBeVisible()
     expect(write).not.toHaveBeenCalled()
@@ -924,7 +947,7 @@ describe('WeChat MD application shell', () => {
     await user.click(screen.getByRole('button', { name: '复制到公众号' }))
     await waitFor(() => expect(fetchImage).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: '手机预览' }))
-    finishFetch(new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }))
+    finishFetch(new Response(new TextEncoder().encode('image'), { status: 200, headers: { 'content-type': 'image/png' } }))
 
     expect(await screen.findByText('文章已发生变化，请重新复制')).toBeVisible()
     expect(write).not.toHaveBeenCalled()

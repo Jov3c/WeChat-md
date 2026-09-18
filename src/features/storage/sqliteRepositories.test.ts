@@ -4,6 +4,7 @@ import type { ArticleVersion } from '../versions/articleVersions'
 import {
   createSqliteArticleRepository,
   createSqliteAssetRepository,
+  createSqliteRecoveryRepository,
   createSqliteVersionRepository,
   type SqlDatabase,
 } from './sqliteRepositories'
@@ -86,5 +87,34 @@ describe('SQLite repositories', () => {
     }])
 
     await expect(repository.list('a-1')).resolves.toEqual([version])
+  })
+
+  it('persists, marks and deletes the desktop recovery snapshot', async () => {
+    const database = new ScriptedDatabase()
+    const repository = createSqliteRecoveryRepository(database)
+    const snapshot = {
+      articleId: 'a-1', title: '未保存标题', content: '未保存正文',
+      styleId: 'warm', layoutId: 'tutorial' as const,
+      updatedAt: '2026-09-18T08:00:05.000Z', savedAt: '2026-09-18T08:00:00.000Z',
+    }
+
+    await repository.save(snapshot)
+    expect(database.writes[0].query).toContain('INSERT INTO recovery_state')
+    expect(database.writes[0].values).toEqual([
+      snapshot.articleId, snapshot.title, snapshot.content, snapshot.styleId,
+      snapshot.layoutId, snapshot.updatedAt, snapshot.savedAt,
+    ])
+
+    database.reads.push([{
+      article_id: snapshot.articleId, title: snapshot.title, content: snapshot.content,
+      style_id: snapshot.styleId, layout_id: snapshot.layoutId,
+      updated_at: snapshot.updatedAt, saved_at: snapshot.savedAt,
+    }])
+    await expect(repository.load()).resolves.toEqual(snapshot)
+
+    await repository.markSaved('2026-09-18T08:00:10.000Z')
+    await repository.delete()
+    expect(database.writes[1]).toMatchObject({ values: ['2026-09-18T08:00:10.000Z'] })
+    expect(database.writes[2].query).toContain('DELETE FROM recovery_state')
   })
 })

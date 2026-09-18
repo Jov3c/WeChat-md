@@ -36,6 +36,19 @@ pub const V2_INDEX_ASSET_LIBRARY: &str = r#"
     ON assets(unused, created_at DESC);
 "#;
 
+pub const V3_CREATE_RECOVERY_STATE: &str = r#"
+  CREATE TABLE IF NOT EXISTS recovery_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    article_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    style_id TEXT,
+    layout_id TEXT,
+    updated_at TEXT NOT NULL,
+    saved_at TEXT
+  );
+"#;
+
 pub fn all() -> Vec<Migration> {
     vec![
         Migration {
@@ -50,12 +63,18 @@ pub fn all() -> Vec<Migration> {
             sql: V2_INDEX_ASSET_LIBRARY,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "create crash recovery state",
+            sql: V3_CREATE_RECOVERY_STATE,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{all, V1_CREATE_STORES, V2_INDEX_ASSET_LIBRARY};
+    use super::{all, V1_CREATE_STORES, V2_INDEX_ASSET_LIBRARY, V3_CREATE_RECOVERY_STATE};
     use sha2::{Digest, Sha384};
     use sqlx::{Connection, Row, SqliteConnection};
 
@@ -94,6 +113,10 @@ mod tests {
             .execute(&mut database)
             .await
             .expect("apply v2 migration");
+        sqlx::raw_sql(V3_CREATE_RECOVERY_STATE)
+            .execute(&mut database)
+            .await
+            .expect("apply v3 migration");
 
         let workspace = sqlx::query("SELECT payload FROM workspace_state WHERE id = 1")
             .fetch_one(&mut database)
@@ -110,10 +133,18 @@ mod tests {
         .expect("find v2 asset index");
         assert_eq!(index.get::<String, _>("name"), "assets_unused_created");
 
+        let recovery_table = sqlx::query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recovery_state'",
+        )
+        .fetch_one(&mut database)
+        .await
+        .expect("find v3 recovery table");
+        assert_eq!(recovery_table.get::<String, _>("name"), "recovery_state");
+
         let versions = all()
             .into_iter()
             .map(|migration| migration.version)
             .collect::<Vec<_>>();
-        assert_eq!(versions, vec![1, 2]);
+        assert_eq!(versions, vec![1, 2, 3]);
     }
 }

@@ -26,6 +26,7 @@ import { migrateLegacyTemplateData } from '../features/templates/templateMigrati
 import { builtInContentComponents, createCustomContentComponent, type ContentComponent } from '../features/components/contentComponents'
 import { extractWechatArticle, type ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
 import { createBrowserVersionRepository, type VersionRepository } from '../features/versions/versionRepository'
+import { createBrowserRecoveryRepository, type RecoveryRepository } from '../features/recovery/recoveryRepository'
 import { articles, replaceLegacyDemoArticles, type ArticleItem } from './demoData'
 import type { OpenedTextFile, RuntimeServices } from '../platform/contracts'
 import { createBrowserFileService } from '../platform/fileServices'
@@ -33,6 +34,7 @@ import { useAutosave } from './hooks/useAutosave'
 import { useAssets } from './hooks/useAssets'
 import { useVersions } from './hooks/useVersions'
 import { useWechatExtraction } from './hooks/useWechatExtraction'
+import { useRecovery } from './hooks/useRecovery'
 import styles from './App.module.css'
 
 let articleSequence = 0
@@ -54,15 +56,17 @@ export interface AppProps {
   articleRepository?: ArticleRepository
   assetRepository?: AssetRepository
   versionRepository?: VersionRepository
+  recoveryRepository?: RecoveryRepository
   saveDelay?: number
   wechatExtractor?: (url: string) => Promise<ExtractedWechatArticle>
 }
 
-export function App({ services, articleRepository, assetRepository, versionRepository, saveDelay = 5000, wechatExtractor: wechatExtractorProp }: AppProps = {}) {
+export function App({ services, articleRepository, assetRepository, versionRepository, recoveryRepository: recoveryRepositoryProp, saveDelay = 5000, wechatExtractor: wechatExtractorProp }: AppProps = {}) {
   const runtime = services?.kind ?? 'web'
   const repository = useMemo(() => services ? services.articleRepository : articleRepository ?? createBrowserArticleRepository(), [articleRepository, services])
   const imageRepository = useMemo(() => services ? services.assetRepository : assetRepository ?? createBrowserAssetRepository(), [assetRepository, services])
   const versionsRepository = useMemo(() => services ? services.versionRepository : versionRepository ?? createBrowserVersionRepository(), [services, versionRepository])
+  const recoveryRepository = useMemo(() => services ? services.recoveryRepository : recoveryRepositoryProp ?? createBrowserRecoveryRepository(), [recoveryRepositoryProp, services])
   const wechatExtractor = services?.extractWechatArticle ?? wechatExtractorProp ?? extractWechatArticle
   const files = useMemo(() => services?.files ?? createBrowserFileService(), [services])
   const [articleList, setArticleList] = useState<ArticleItem[]>(() => articles.map((article) => ({ ...article })))
@@ -198,6 +202,18 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   }), [articleList, contentComponents, selectedId, stylePresets, syncEnabled, templates, wechatSavePolicy])
 
   const {
+    pendingRecovery,
+    ignoreRecovery,
+    acceptRecovery,
+    markFormallySaved,
+  } = useRecovery({
+    repository: recoveryRepository,
+    articles: articleList,
+    currentArticle: selectedArticle,
+    enabled: storageReady,
+  })
+
+  const {
     versionHistoryOpen,
     setVersionHistoryOpen,
     articleVersions,
@@ -252,7 +268,10 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     snapshot: workspaceSnapshot,
     enabled: storageReady,
     delay: saveDelay,
-    onSaved: createDueAutomaticVersions,
+    onSaved: async (snapshot) => {
+      await createDueAutomaticVersions(snapshot)
+      await markFormallySaved()
+    },
   })
 
   useEffect(() => {
@@ -901,6 +920,31 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     }
   }
 
+  const restoreRecoveryDraft = () => {
+    const snapshot = acceptRecovery()
+    if (!snapshot) return
+    setArticleList((current) => current.map((article) => article.id === snapshot.articleId ? {
+      ...article,
+      title: snapshot.title,
+      titleMode: 'manual',
+      content: snapshot.content,
+      styleId: snapshot.styleId,
+      layoutId: snapshot.layoutId,
+      date: '刚刚',
+    } : article))
+    setSelectedId(snapshot.articleId)
+    setSelectedComponentText('')
+    setStyleDraft(null)
+    setToastMessage('已恢复异常退出前的草稿')
+    setToastOpen(true)
+  }
+
+  const discardRecoveryDraft = async () => {
+    await ignoreRecovery()
+    setToastMessage('已忽略恢复草稿')
+    setToastOpen(true)
+  }
+
   if (!storageReady) {
     return (
       <main className={styles.app} data-runtime={runtime}>
@@ -913,6 +957,15 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   return (
     <main className={styles.app} data-runtime={runtime}>
       {runtime === 'web' && <TitleBar />}
+      <Dialog open={pendingRecovery !== null} onOpenChange={() => undefined} title="发现未保存的草稿">
+        <div className={styles.draftDialogBody}>
+          <p>上次可能在保存前意外退出。是否恢复“{pendingRecovery?.title}”的最新编辑内容？</p>
+          <div>
+            <Button onClick={() => { void discardRecoveryDraft() }}>忽略</Button>
+            <Button variant="primary" onClick={restoreRecoveryDraft}>恢复草稿</Button>
+          </div>
+        </div>
+      </Dialog>
       <Toolbar
         onNewArticle={() => requestWorkspaceAction({ type: 'new' })}
         onImport={() => { void openMarkdownArticle() }}
@@ -1059,6 +1112,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         open={versionHistoryOpen}
         onOpenChange={setVersionHistoryOpen}
         versions={articleVersions}
+        currentArticle={{ title: selectedArticle?.title ?? '', content, styleId: activeStyle.id, styleSnapshot: previewStyle }}
         onSaveCurrent={() => { void saveCurrentVersion() }}
         onRestore={(versionId) => { void restoreArticleVersion(versionId) }}
       />

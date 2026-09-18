@@ -5,6 +5,7 @@ import type { VersionRepository } from '../features/versions/versionRepository'
 import type { RuntimeKind } from './runtime'
 import type { TextExport } from '../features/export/articleExport'
 import type { DesktopImageArchive } from './desktopImageArchive'
+import type { RecoveryRepository } from '../features/recovery/recoveryRepository'
 
 export interface FileFilter {
   name: string
@@ -44,6 +45,7 @@ export interface RuntimeServices {
   articleRepository: ArticleRepository | null
   assetRepository: AssetRepository | null
   versionRepository: VersionRepository | null
+  recoveryRepository: RecoveryRepository | null
   extractWechatArticle: (url: string) => Promise<ExtractedWechatArticle>
   imageFetcher?: typeof fetch
   files: FileService

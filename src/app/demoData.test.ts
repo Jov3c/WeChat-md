@@ -17,19 +17,22 @@ describe('fresh workspace demo content', () => {
     expect(articles[0].content.length).toBeGreaterThan(1_200)
   })
 
-  it('replaces every existing article when the one-time reset has not run', () => {
+  it('replaces legacy bundled examples while preserving user articles', () => {
     const migrated = replaceLegacyDemoArticles([
       { id: 'ollama', title: '在本地运行大语言模型：Ollama 完全指南', date: '今天', content: '# 旧示例' },
       { id: 'ai-tools', title: 'AI 工具推荐清单', date: '今天', content: '# 旧示例' },
       { id: 'my-article', title: '我的文章', date: '今天', content: '# 不应删除' },
     ])
 
-    expect(migrated.map(({ id }) => id)).toEqual(['wechat-md-guide-v2'])
+    expect(migrated.map(({ id }) => id)).toEqual(['wechat-md-guide-v2', 'my-article'])
+    expect(migrated.find(({ id }) => id === 'my-article')?.content).toBe('# 不应删除')
   })
 
-  it('preserves articles created after the one-time reset', () => {
-    const resetGuide = { ...articles[0], content: '# 用户修改过的示例' }
-    const userArticles = [resetGuide, { id: 'my-article', title: '我的文章', date: '今天', content: '# 正文' }]
+  it('does not recreate the guide or delete content after the user removes it', () => {
+    const userArticles = [
+      { id: 'my-article', title: '我的文章', date: '今天', content: '# 正文' },
+      { id: 'imported', title: '导入文章', date: '今天', content: '# 导入内容', source: 'imported' as const },
+    ]
 
     expect(replaceLegacyDemoArticles(userArticles)).toEqual(userArticles)
   })

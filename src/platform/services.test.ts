@@ -8,6 +8,7 @@ function service(kind: RuntimeServices['kind']): RuntimeServices {
     articleRepository: null,
     assetRepository: null,
     versionRepository: null,
+    recoveryRepository: null,
     extractWechatArticle: async () => {
       throw new Error('not used')
     },

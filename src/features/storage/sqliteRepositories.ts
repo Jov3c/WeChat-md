@@ -3,6 +3,8 @@ import type { AssetRepository, ImageAsset, ImageAssetSource, StoredImageAsset } 
 import type { StylePreset } from '../styles/stylePresets'
 import type { ArticleVersion, ArticleVersionReason } from '../versions/articleVersions'
 import type { VersionRepository } from '../versions/versionRepository'
+import type { RecoveryRepository, RecoverySnapshot } from '../recovery/recoveryRepository'
+import type { ArticleLayoutId } from '../layouts/articleLayouts'
 
 const MAX_VERSIONS_PER_ARTICLE = 50
 
@@ -32,6 +34,16 @@ interface VersionRow {
   style_snapshot: string | null
   created_at: string
   reason: ArticleVersionReason
+}
+
+interface RecoveryRow {
+  article_id: string
+  title: string
+  content: string
+  style_id: string | null
+  layout_id: ArticleLayoutId | null
+  updated_at: string
+  saved_at: string | null
 }
 
 function assetMetadata(row: AssetRow): ImageAsset {
@@ -138,4 +150,35 @@ export function createSqliteVersionRepository(database: SqlDatabase): VersionRep
     },
   }
   return repository
+}
+
+export function createSqliteRecoveryRepository(database: SqlDatabase): RecoveryRepository {
+  return {
+    async load() {
+      const rows = await database.select<RecoveryRow[]>('SELECT * FROM recovery_state WHERE id = 1')
+      const row = rows[0]
+      if (!row) return null
+      return {
+        articleId: row.article_id,
+        title: row.title,
+        content: row.content,
+        styleId: row.style_id ?? undefined,
+        layoutId: row.layout_id ?? undefined,
+        updatedAt: row.updated_at,
+        savedAt: row.saved_at ?? undefined,
+      } satisfies RecoverySnapshot
+    },
+    async save(snapshot) {
+      await database.execute(
+        'INSERT INTO recovery_state (id,article_id,title,content,style_id,layout_id,updated_at,saved_at) VALUES (1,$1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO UPDATE SET article_id=excluded.article_id,title=excluded.title,content=excluded.content,style_id=excluded.style_id,layout_id=excluded.layout_id,updated_at=excluded.updated_at,saved_at=excluded.saved_at',
+        [snapshot.articleId, snapshot.title, snapshot.content, snapshot.styleId ?? null, snapshot.layoutId ?? null, snapshot.updatedAt, snapshot.savedAt ?? null],
+      )
+    },
+    async markSaved(savedAt) {
+      await database.execute('UPDATE recovery_state SET saved_at = $1 WHERE id = 1', [savedAt])
+    },
+    async delete() {
+      await database.execute('DELETE FROM recovery_state WHERE id = 1')
+    },
+  }
 }
