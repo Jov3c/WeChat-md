@@ -7,6 +7,7 @@ import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SoftwareSettingsDialog } from '../components/settings/SoftwareSettingsDialog'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { TemplateLibraryDialog } from '../components/templates/TemplateLibraryDialog'
+import { NewArticleDialog } from '../components/templates/NewArticleDialog'
 import { WechatExtractDialog } from '../components/wechat/WechatExtractDialog'
 import { AssetLibraryDialog } from '../components/assets/AssetLibraryDialog'
 import { VersionHistoryDialog } from '../components/versions/VersionHistoryDialog'
@@ -20,8 +21,8 @@ import { createBrowserArticleRepository, type ArticleLibrarySnapshot, type Artic
 import { collectImageAssetIds, replaceImageAssetUrls } from '../features/assets/assetMarkdown'
 import { createBrowserAssetRepository, type AssetRepository } from '../features/assets/assetRepository'
 import { builtInStylePresets, duplicateStylePreset, updateStylePreset, type StylePreset, type StyleValuePath } from '../features/styles/stylePresets'
+import { createArticleStyleProfiles, findActiveArticleStyleProfile } from '../features/styles/articleStyleProfiles'
 import { builtInContentTemplates, createCustomContentTemplate, type ArticleContentTemplate } from '../features/templates/templatePresets'
-import { builtInLayouts, type ArticleLayoutId } from '../features/layouts/articleLayouts'
 import { migrateLegacyTemplateData } from '../features/templates/templateMigration'
 import { builtInContentComponents, createCustomContentComponent, type ContentComponent } from '../features/components/contentComponents'
 import { extractWechatArticle, type ExtractedWechatArticle } from '../features/wechat/wechatExtraction'
@@ -78,6 +79,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const [templates, setTemplates] = useState<ArticleContentTemplate[]>(() => builtInContentTemplates)
   const [contentComponents, setContentComponents] = useState<ContentComponent[]>(() => builtInContentComponents)
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [newArticleOpen, setNewArticleOpen] = useState(false)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [styleDraft, setStyleDraft] = useState<StylePreset | null>(null)
@@ -155,6 +157,8 @@ export function App({ services, articleRepository, assetRepository, versionRepos
   const activeStyleId = selectedArticle?.styleId ?? 'default'
   const activeStyle = stylePresets.find((preset) => preset.id === activeStyleId) ?? builtInStylePresets[0]
   const activeLayoutId = selectedArticle?.layoutId ?? 'standard'
+  const articleStyleProfiles = useMemo(() => createArticleStyleProfiles(stylePresets), [stylePresets])
+  const activeArticleStyleProfile = findActiveArticleStyleProfile(articleStyleProfiles, activeStyle.id, activeLayoutId)
   const previewStyle = styleDraft ?? activeStyle
   const {
     wechatExtractOpen,
@@ -180,8 +184,9 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     },
     onStyleDraftChange: setStyleDraft,
     onStyleSaved: (style, articleId) => {
-      setStylePresets((current) => [...current, style])
-      setArticleList((current) => current.map((article) => article.id === articleId ? { ...article, styleId: style.id } : article))
+      const savedStyle = { ...style, layoutId: activeLayoutId }
+      setStylePresets((current) => [...current, savedStyle])
+      setArticleList((current) => current.map((article) => article.id === articleId ? { ...article, styleId: savedStyle.id, layoutId: savedStyle.layoutId } : article))
     },
     onOpenLayoutSettings: () => setSettingsTab('layout'),
     onNotify: (message) => {
@@ -417,30 +422,30 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     }
   }
 
-  const assignStyleToCurrentArticle = (styleId: string) => {
+  const assignStyleToCurrentArticle = (styleId: string, layoutId: ArticleItem['layoutId']) => {
     setStyleDraft(null)
-    setArticleList((current) => current.map((article) => article.id === selectedId ? { ...article, styleId } : article))
+    setArticleList((current) => current.map((article) => article.id === selectedId ? { ...article, styleId, layoutId, date: '刚刚' } : article))
     setSaveStatus('saving')
   }
 
-  const applyStyleToCurrentArticle = (styleId: string) => {
-    const style = stylePresets.find((preset) => preset.id === styleId)
-    if (!style) return
-    assignStyleToCurrentArticle(styleId)
-    setToastMessage(`已应用“${style.name}”`)
+  const applyStyleToCurrentArticle = (profileId: string) => {
+    const profile = articleStyleProfiles.find((item) => item.id === profileId)
+    if (!profile) return
+    assignStyleToCurrentArticle(profile.styleId, profile.layoutId)
+    setToastMessage(`已应用“${profile.name}”`)
     setToastOpen(true)
   }
 
-  const requestStyleApplication = (styleId: string) => {
-    if (styleId === activeStyle.id) return
+  const requestStyleApplication = (profileId: string) => {
+    if (profileId === activeArticleStyleProfile?.id) return
     if (styleDraft) {
       setPendingArticleId(undefined)
-      setPendingStyleId(styleId)
+      setPendingStyleId(profileId)
       setGuardStyleName(activeStyle.builtIn ? `${activeStyle.name} 副本` : activeStyle.name)
       setDraftGuardOpen(true)
       return
     }
-    applyStyleToCurrentArticle(styleId)
+    applyStyleToCurrentArticle(profileId)
   }
 
   const discardDraftAndContinue = () => {
@@ -487,13 +492,15 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     let savedStyle: StylePreset
     if (activeStyle.builtIn) {
       styleSequence += 1
-      savedStyle = duplicateStylePreset(styleDraft, `custom-${Date.now()}-${styleSequence}`, name?.trim() || `${activeStyle.name} 副本`)
+      savedStyle = { ...duplicateStylePreset(styleDraft, `custom-${Date.now()}-${styleSequence}`, name?.trim() || `${activeStyle.name} 副本`), layoutId: activeLayoutId }
       setStylePresets((current) => [...current, savedStyle])
     } else {
-      savedStyle = { ...styleDraft, name: name?.trim() || styleDraft.name }
+      savedStyle = { ...styleDraft, name: name?.trim() || styleDraft.name, layoutId: activeLayoutId }
       setStylePresets((current) => current.map((preset) => preset.id === savedStyle.id ? savedStyle : preset))
     }
-    setArticleList((current) => current.map((article) => article.id === selectedId ? { ...article, styleId: savedStyle.id } : article))
+    setArticleList((current) => current.map((article) => article.id === selectedId
+      ? { ...article, styleId: savedStyle.id, layoutId: savedStyle.layoutId }
+      : article))
     setStyleDraft(null)
     setSaveStatus('saving')
     setToastMessage(`已保存并应用“${savedStyle.name}”`)
@@ -515,7 +522,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     const style = stylePresets.find((preset) => preset.id === styleId)
     if (!style || style.builtIn) return
     setStylePresets((current) => current.filter((preset) => preset.id !== styleId))
-    setArticleList((current) => current.map((article) => article.styleId === styleId ? { ...article, styleId: 'default' } : article))
+    setArticleList((current) => current.map((article) => article.styleId === styleId ? { ...article, styleId: 'default', layoutId: 'standard' } : article))
     setStyleDraft((current) => current?.id === styleId ? null : current)
     setSaveStatus('saving')
     setToastMessage(`已删除“${style.name}”`)
@@ -526,7 +533,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     const style = stylePresets.find((preset) => preset.id === styleId)
     if (!style || style.builtIn) return
     const base = builtInStylePresets.find((preset) => preset.id === style.basePresetId) ?? builtInStylePresets[0]
-    const reset = duplicateStylePreset(base, style.id, style.name)
+    const reset = { ...duplicateStylePreset(base, style.id, style.name), layoutId: style.layoutId ?? 'standard' }
     setStylePresets((current) => current.map((preset) => preset.id === styleId ? reset : preset))
     setStyleDraft((current) => current?.id === styleId ? null : current)
     setSaveStatus('saving')
@@ -549,17 +556,6 @@ export function App({ services, articleRepository, assetRepository, versionRepos
     setSelectedComponentText('')
     setSelectedId(article.id)
     setSaveStatus('saving')
-  }
-
-  function applyLayoutToCurrentArticle(layoutId: ArticleLayoutId) {
-    const layout = builtInLayouts.find((item) => item.id === layoutId)
-    if (!layout || !selectedArticle) return
-    setArticleList((current) => current.map((article) => article.id === selectedId
-      ? { ...article, layoutId, date: '刚刚' }
-      : article))
-    setSaveStatus('saving')
-    setToastMessage(`已应用“${layout.name}”`)
-    setToastOpen(true)
   }
 
   function createArticleFromTemplate(templateId: string) {
@@ -599,7 +595,7 @@ export function App({ services, articleRepository, assetRepository, versionRepos
 
   async function performWorkspaceAction(action: PendingWorkspaceAction) {
     if (action.type === 'import') await importArticle(action.file)
-    else createBlankArticle()
+    else setNewArticleOpen(true)
   }
 
   const openSaveTemplate = () => {
@@ -973,15 +969,10 @@ export function App({ services, articleRepository, assetRepository, versionRepos
         onCopy={copyArticle}
         saveStatus={saveStatus}
         savedAt={savedAt}
-        styles={stylePresets}
-        activeStyleId={activeStyle.id}
-        onStyleSelect={requestStyleApplication}
+        articleStyles={articleStyleProfiles}
+        activeArticleStyleId={activeArticleStyleProfile?.id}
+        onArticleStyleSelect={requestStyleApplication}
         onManageStyles={openStyleLibrary}
-        layouts={builtInLayouts}
-        activeLayoutId={activeLayoutId}
-        onLayoutSelect={applyLayoutToCurrentArticle}
-        contentTemplates={templates}
-        onContentTemplateSelect={createArticleFromTemplate}
         onSaveCurrentTemplate={openSaveTemplate}
         onManageTemplates={() => setTemplateLibraryOpen(true)}
         onOpenPreviewSettings={openPageSettings}
@@ -1052,7 +1043,8 @@ export function App({ services, articleRepository, assetRepository, versionRepos
           onClose={() => setRightSidebarOpen(false)}
           stylePreset={previewStyle}
           styles={stylePresets}
-          activeStyleId={activeStyle.id}
+          articleStyles={articleStyleProfiles}
+          activeArticleStyleId={activeArticleStyleProfile?.id}
           libraryRequest={styleLibraryRequest}
           styleDirty={styleDraft !== null}
           onStyleValueChange={changeStyleValue}
@@ -1074,16 +1066,22 @@ export function App({ services, articleRepository, assetRepository, versionRepos
       </div>
       <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen} title="保存为模板">
         <div className={styles.draftDialogBody}>
-          <p>保存当前正文和版式，之后可从顶部“模板”菜单用它新建文章。</p>
+          <p>保存当前正文结构，之后点击“新建文章”即可从模板中选择。</p>
           <label><span>模板名称</span><Input aria-label="模板名称" value={templateName} onChange={(event) => setTemplateName(event.target.value)} /></label>
           <div><Button onClick={() => setSaveTemplateOpen(false)}>取消</Button><Button variant="primary" disabled={!templateName.trim()} onClick={saveCurrentTemplate}>保存模板</Button></div>
         </div>
       </Dialog>
+      <NewArticleDialog
+        open={newArticleOpen}
+        onOpenChange={setNewArticleOpen}
+        templates={templates}
+        onBlank={createBlankArticle}
+        onTemplateSelect={createArticleFromTemplate}
+      />
       <TemplateLibraryDialog
         open={templateLibraryOpen}
         onOpenChange={setTemplateLibraryOpen}
         templates={templates}
-        onUse={createArticleFromTemplate}
         onRename={renameTemplate}
         onDelete={deleteTemplate}
       />

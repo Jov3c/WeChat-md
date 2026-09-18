@@ -8,12 +8,11 @@ interface TemplateLibraryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   templates: ArticleTemplate[]
-  onUse: (templateId: string) => void
   onRename: (templateId: string, name: string) => void
   onDelete: (templateId: string) => void
 }
 
-export function TemplateLibraryDialog({ open, onOpenChange, templates, onUse, onRename, onDelete }: TemplateLibraryDialogProps) {
+export function TemplateLibraryDialog({ open, onOpenChange, templates, onRename, onDelete }: TemplateLibraryDialogProps) {
   const [renameTarget, setRenameTarget] = useState<ArticleTemplate>()
   const [deleteTarget, setDeleteTarget] = useState<ArticleTemplate>()
   const [name, setName] = useState('')
@@ -45,9 +44,9 @@ export function TemplateLibraryDialog({ open, onOpenChange, templates, onUse, on
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange} title="模板库">
+      <Dialog open={open} onOpenChange={onOpenChange} title="管理模板">
         <div className={styles.library}>
-          <p className={styles.intro}>选择模板会新建一篇文章，不会覆盖当前内容。</p>
+          <p className={styles.intro}>模板会在“新建文章”时供你选择。</p>
           <div className={styles.grid}>
             {templates.map((template) => (
               <Card className={styles.card} key={template.id}>
@@ -66,7 +65,6 @@ export function TemplateLibraryDialog({ open, onOpenChange, templates, onUse, on
                   </div>
                   <p>{template.description}</p>
                 </div>
-                <Button onClick={() => { onUse(template.id); onOpenChange(false) }}>使用 {template.name}</Button>
               </Card>
             ))}
           </div>

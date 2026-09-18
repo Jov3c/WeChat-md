@@ -18,6 +18,70 @@ describe('rich text clipboard serialization', () => {
     article.remove()
   })
 
+  it('copies a WeChat-safe body fragment instead of the preview article wrapper', () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<h1>公众号标题</h1><p>正文</p>'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+    const container = document.createElement('div')
+    container.innerHTML = html
+
+    expect(container.querySelector('article')).toBeNull()
+    expect(container.firstElementChild?.tagName).toBe('P')
+    expect((container.firstElementChild as HTMLElement).style.fontSize).toBe('0px')
+    expect(container.lastElementChild?.tagName).toBe('P')
+    expect(container.querySelector('h1')?.textContent).toBe('公众号标题')
+    article.remove()
+  })
+
+  it('normalizes paragraph text into WeChat leaf spans and physical alignment values', () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<p style="text-align:start">正文 <strong>重点</strong></p>'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+    const container = document.createElement('div')
+    container.innerHTML = html
+    const paragraph = container.querySelector('p:not([style*="font-size: 0"])') as HTMLElement
+
+    expect(paragraph.style.textAlign).toBe('left')
+    expect(paragraph.querySelector('span[leaf]')?.textContent).toBe('正文 ')
+    expect(Array.from(paragraph.childNodes).some((node) => (
+      node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+    ))).toBe(false)
+    article.remove()
+  })
+
+  it('removes preview-only table wrappers from copied HTML', () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<div class="table-wrap"><table><tbody><tr><td>内容</td></tr></tbody></table></div>'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+    const container = document.createElement('div')
+    container.innerHTML = html
+
+    expect(container.querySelector('div')).toBeNull()
+    expect(container.querySelector('table td')?.textContent).toBe('内容')
+    article.remove()
+  })
+
+  it('flattens nested list items without losing their content', () => {
+    const article = document.createElement('article')
+    article.innerHTML = '<ul><li>一级<ul><li>二级</li><li>二级末项</li></ul></li><li>一级末项</li></ul>'
+    document.body.append(article)
+
+    const html = serializePreviewArticle(article)
+    const container = document.createElement('div')
+    container.innerHTML = html
+
+    expect(container.querySelector('li > ul, li > ol')).toBeNull()
+    expect(Array.from(container.querySelectorAll('li')).map((item) => item.textContent?.replace(/^[•\d.]+\s*/, '')))
+      .toEqual(['一级', '二级', '二级末项', '一级末项'])
+    article.remove()
+  })
+
   it('keeps hidden style-only markers hidden in copied HTML', () => {
     const article = document.createElement('article')
     article.innerHTML = '<h2><span style="display:none">1</span>标题</h2>'
@@ -128,6 +192,37 @@ describe('rich text clipboard serialization', () => {
       reader.readAsText(item.data['text/html'])
     })
     expect(copiedHtml).toBe(html)
+
+    const copiedPlainText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.addEventListener('load', () => resolve(String(reader.result)))
+      reader.addEventListener('error', () => reject(reader.error))
+      reader.readAsText(item.data['text/plain'])
+    })
+    expect(copiedPlainText).toBe('已检查内容')
+    expect(copiedPlainText).not.toContain('#')
+  })
+
+  it('neutralizes visible Markdown code markers in the plain-text clipboard flavor', async () => {
+    const write = vi.fn().mockResolvedValue(undefined)
+    class TestClipboardItem {
+      constructor(public readonly data: Record<string, Blob>) {}
+    }
+    vi.stubGlobal('ClipboardItem', TestClipboardItem)
+    vi.stubGlobal('navigator', { clipboard: { write } })
+
+    await copyPreparedArticle('<pre><code># 文章标题\n## 第一部分\n- 一个步骤</code></pre>')
+
+    const item = write.mock.calls[0][0][0] as TestClipboardItem
+    const copiedPlainText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.addEventListener('load', () => resolve(String(reader.result)))
+      reader.addEventListener('error', () => reject(reader.error))
+      reader.readAsText(item.data['text/plain'])
+    })
+    expect(copiedPlainText).not.toMatch(/^#{1,6}\s/m)
+    expect(copiedPlainText).not.toMatch(/^[-+*]\s/m)
+    expect(copiedPlainText.replaceAll('\u200b', '')).toBe('# 文章标题\n## 第一部分\n- 一个步骤')
   })
 
   it('fails instead of silently copying Markdown when rich clipboard writing is unavailable', async () => {

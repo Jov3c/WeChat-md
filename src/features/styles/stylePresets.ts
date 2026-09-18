@@ -41,6 +41,7 @@ export interface ArticleComponentStyles {
 export interface StylePreset {
   id: string
   basePresetId?: string
+  layoutId?: import('../layouts/articleLayouts').ArticleLayoutId
   category?: 'core' | 'basic' | 'advanced'
   name: string
   description: string

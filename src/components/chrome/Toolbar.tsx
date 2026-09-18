@@ -7,9 +7,7 @@ import {
   MoreHorizontal,
   Settings2,
 } from 'lucide-react'
-import { builtInStylePresets, type StylePreset } from '../../features/styles/stylePresets'
-import { builtInLayouts, type ArticleLayout, type ArticleLayoutId } from '../../features/layouts/articleLayouts'
-import { builtInContentTemplates, type ArticleContentTemplate } from '../../features/templates/templatePresets'
+import { builtInArticleStyleProfiles, type ArticleStyleProfile } from '../../features/styles/articleStyleProfiles'
 import { Button, Divider, DropdownMenu, IconButton, Tooltip } from '../ui'
 import styles from './AppChrome.module.css'
 
@@ -20,15 +18,10 @@ export interface ToolbarProps {
   onCopy: () => void
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error'
   savedAt?: Date
-  styles?: StylePreset[]
-  activeStyleId?: string
-  onStyleSelect?: (id: string) => void
+  articleStyles?: ArticleStyleProfile[]
+  activeArticleStyleId?: string
+  onArticleStyleSelect?: (id: string) => void
   onManageStyles?: () => void
-  layouts?: ArticleLayout[]
-  activeLayoutId?: ArticleLayoutId
-  onLayoutSelect?: (layoutId: ArticleLayoutId) => void
-  contentTemplates?: ArticleContentTemplate[]
-  onContentTemplateSelect?: (templateId: string) => void
   onSaveCurrentTemplate?: () => void
   onManageTemplates?: () => void
   onOpenPreviewSettings?: () => void
@@ -57,15 +50,10 @@ export function Toolbar({
   onCopy,
   saveStatus = 'idle',
   savedAt,
-  styles: availableStyles = builtInStylePresets,
-  activeStyleId = 'default',
-  onStyleSelect = () => undefined,
+  articleStyles = builtInArticleStyleProfiles,
+  activeArticleStyleId = 'default',
+  onArticleStyleSelect = () => undefined,
   onManageStyles = () => undefined,
-  layouts: availableLayouts = builtInLayouts,
-  activeLayoutId = 'standard',
-  onLayoutSelect = () => undefined,
-  contentTemplates: availableTemplates = builtInContentTemplates,
-  onContentTemplateSelect = () => undefined,
   onSaveCurrentTemplate = () => undefined,
   onManageTemplates = () => undefined,
   onOpenPreviewSettings = () => undefined,
@@ -77,25 +65,11 @@ export function Toolbar({
   onRestoreBackup = () => undefined,
 }: ToolbarProps) {
   const saveLabel = formatSaveStatus(saveStatus, savedAt)
-  const styleItems = [...availableStyles.map((preset) => ({
-    id: preset.id,
-    label: `${preset.id === activeStyleId ? '✓ ' : ''}${preset.name}`,
-    onSelect: () => onStyleSelect(preset.id),
+  const styleItems = [...articleStyles.map((profile) => ({
+    id: profile.id,
+    label: `${profile.id === activeArticleStyleId ? '✓ ' : ''}${profile.name}`,
+    onSelect: () => onArticleStyleSelect(profile.id),
   })), { id: 'manage-styles', label: '管理风格', separatorBefore: true, onSelect: onManageStyles }]
-  const templateItems = [
-    ...availableTemplates.map((template) => ({
-      id: template.id,
-      label: template.name,
-      onSelect: () => onContentTemplateSelect(template.id),
-    })),
-    { id: 'save-template', label: '保存当前为模板', separatorBefore: true, onSelect: onSaveCurrentTemplate },
-    { id: 'manage-templates', label: '管理模板', onSelect: onManageTemplates },
-  ]
-  const layoutItems = availableLayouts.map((layout) => ({
-    id: layout.id,
-    label: `${layout.id === activeLayoutId ? '✓ ' : ''}${layout.name}`,
-    onSelect: () => onLayoutSelect(layout.id),
-  }))
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="文章操作">
@@ -106,14 +80,6 @@ export function Toolbar({
         <Button onClick={onImport}><FileInput size={16} /> 导入 MD</Button>
         <Button onClick={onExtract}><CheckCircle2 size={16} /> 提取公众号</Button>
         <Divider />
-        <DropdownMenu
-          trigger={<Button>版式 <ChevronDown className={styles.buttonChevron} size={14} /></Button>}
-          items={layoutItems}
-        />
-        <DropdownMenu
-          trigger={<Button>模板 <ChevronDown className={styles.buttonChevron} size={14} /></Button>}
-          items={templateItems}
-        />
         <DropdownMenu
           trigger={<Button>风格 <ChevronDown className={styles.buttonChevron} size={14} /></Button>}
           items={styleItems}
@@ -136,6 +102,7 @@ export function Toolbar({
             { id: 'backup-workspace', label: '备份工作区', separatorBefore: true, onSelect: onBackupWorkspace },
             { id: 'restore-workspace', label: '恢复备份', onSelect: onRestoreBackup },
             { id: 'more-styles', label: '管理风格', onSelect: onManageStyles },
+            { id: 'save-template', label: '保存当前为模板', separatorBefore: true, onSelect: onSaveCurrentTemplate },
             { id: 'more-templates', label: '管理模板', onSelect: onManageTemplates },
           ]}
         />

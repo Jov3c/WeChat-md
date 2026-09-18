@@ -110,15 +110,28 @@ describe('WeChat HTML validator', () => {
     ]))
   })
 
-  it('accepts portable semantic article HTML', () => {
+  it('accepts a portable semantic body fragment', () => {
     expect(validateWechatHtml(`
-      <article>
-        <h1 style="font-size:32px;color:#141413">标题</h1>
-        <p style="font-size:16px;line-height:1.8">正文 <strong>重点</strong></p>
-        <img src="data:image/png;base64,aW1hZ2U=" alt="配图">
-        <a href="https://example.com">安全链接</a>
-      </article>
+      <h1 style="font-size:32px;color:#141413">标题</h1>
+      <p style="font-size:16px;line-height:1.8">正文 <strong>重点</strong></p>
+      <img src="data:image/png;base64,aW1hZ2U=" alt="配图">
+      <a href="https://example.com">安全链接</a>
     `)).toEqual([])
+  })
+
+  it('reports preview wrappers and nested lists that can break WeChat paste structure', () => {
+    const issues = validateWechatHtml(`
+      <article>
+        <div><table><tbody><tr><td>内容</td></tr></tbody></table></div>
+        <ul><li>一级<ul><li>二级</li></ul></li></ul>
+      </article>
+    `)
+
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'preview-root-wrapper', level: 'error' }),
+      expect.objectContaining({ code: 'preview-table-wrapper', level: 'error' }),
+      expect.objectContaining({ code: 'nested-list-structure', level: 'error' }),
+    ]))
   })
 
   it('rejects SVG data URLs because they may contain executable content', () => {

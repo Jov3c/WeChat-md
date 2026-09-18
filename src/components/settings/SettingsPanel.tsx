@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, CirclePlus, Code2, Image, Link2, List, Minus, MoreHorizontal, PanelRightClose, PanelTop, Quote, Settings2, Table2, Type } from 'lucide-react'
 import { builtInStylePresets, type StylePreset, type StyleValuePath } from '../../features/styles/stylePresets'
+import { builtInArticleStyleProfiles, type ArticleStyleProfile } from '../../features/styles/articleStyleProfiles'
 import { builtInContentComponents, type ContentComponent } from '../../features/components/contentComponents'
 import { Button, Card, Dialog, DropdownMenu, IconButton, Input, Slider, Tabs } from '../ui'
 import { StyleEditor, type StyleEditorSection } from './StyleEditor'
@@ -31,7 +32,8 @@ export interface SettingsPanelProps {
   open: boolean
   stylePreset?: StylePreset
   styles?: StylePreset[]
-  activeStyleId?: string
+  articleStyles?: ArticleStyleProfile[]
+  activeArticleStyleId?: string
   libraryRequest?: number
   styleDirty?: boolean
   onStyleValueChange?: (path: StyleValuePath, value: EditableValue) => void
@@ -74,7 +76,8 @@ export function SettingsPanel({
   open,
   stylePreset = builtInStylePresets[0],
   styles: availableStyles = builtInStylePresets,
-  activeStyleId = 'default',
+  articleStyles = builtInArticleStyleProfiles,
+  activeArticleStyleId = 'default',
   libraryRequest = 0,
   styleDirty = false,
   onStyleValueChange = () => undefined,
@@ -105,6 +108,7 @@ export function SettingsPanel({
   const [componentDeleteTarget, setComponentDeleteTarget] = useState<ContentComponent | null>(null)
   const [componentCategory, setComponentCategory] = useState<ComponentCategory>('common')
   const [componentPage, setComponentPage] = useState(0)
+  const activeArticleStyle = articleStyles.find((profile) => profile.id === activeArticleStyleId)
 
   useEffect(() => { setSection(null); setLibraryOpen(false) }, [tab])
   useEffect(() => { if (libraryRequest > 0) { setSection(null); setLibraryOpen(true) } }, [libraryRequest])
@@ -163,22 +167,23 @@ export function SettingsPanel({
             <div><h3>风格库</h3><p>为当前文章选择排版风格</p></div>
           </div>
           {[
-            { title: '内置风格', items: availableStyles.filter((preset) => preset.builtIn) },
-            { title: '我的风格', items: availableStyles.filter((preset) => !preset.builtIn) },
+            { title: '内置风格', items: articleStyles.filter((profile) => profile.builtIn) },
+            { title: '我的风格', items: articleStyles.filter((profile) => !profile.builtIn) },
           ].map((group) => group.items.length ? (
             <section className={styles.libraryGroup} key={group.title}>
               <h4>{group.title}</h4>
-              {group.items.map((preset) => {
-                const applied = preset.id === activeStyleId
+              {group.items.map((profile) => {
+                const preset = availableStyles.find((item) => item.id === profile.styleId) ?? builtInStylePresets[0]
+                const applied = profile.id === activeArticleStyleId
                 return (
-                  <Card className={styles.libraryCard} selected={applied} key={preset.id}>
+                  <Card className={styles.libraryCard} selected={applied} key={profile.id}>
                     <span className={styles.librarySwatch} style={{ color: preset.global.accentColor, background: preset.global.backgroundColor }}><i /><i /><i /></span>
-                    <span><strong>{preset.name}</strong><small>{preset.description}</small></span>
+                    <span><strong>{profile.name}</strong><small>{profile.description}</small></span>
                     <span className={styles.libraryActions}>
-                      {applied ? <em><Check size={12} />已应用</em> : <Button size="sm" onClick={() => onStyleSelect(preset.id)}>应用 {preset.name}</Button>}
-                      {!preset.builtIn ? (
+                      {applied ? <em><Check size={12} />已应用</em> : <Button size="sm" onClick={() => onStyleSelect(profile.id)}>应用 {profile.name}</Button>}
+                      {!profile.builtIn ? (
                         <DropdownMenu
-                          trigger={<IconButton className={styles.libraryMenuButton} label={`管理 ${preset.name}`}><MoreHorizontal size={15} /></IconButton>}
+                          trigger={<IconButton className={styles.libraryMenuButton} label={`管理 ${profile.name}`}><MoreHorizontal size={15} /></IconButton>}
                           items={[
                             { id: 'rename', label: '重命名风格', onSelect: () => setRenameTarget(preset) },
                             { id: 'reset', label: '恢复基础风格', onSelect: () => onResetStyle(preset.id) },
@@ -203,8 +208,8 @@ export function SettingsPanel({
             <Card className={styles.styleCard}>
               <span className={styles.stylePreview} style={{ color: stylePreset.global.accentColor }}><i /><i /><i /></span>
               <span className={styles.styleIdentity}>
-                <strong>{stylePreset.name}</strong>
-                <small>{stylePreset.description}</small>
+                <strong>{activeArticleStyle?.name ?? stylePreset.name}</strong>
+                <small>{activeArticleStyle?.description ?? stylePreset.description}</small>
               </span>
               <button type="button" onClick={() => setLibraryOpen(true)}>更换风格</button>
             </Card>

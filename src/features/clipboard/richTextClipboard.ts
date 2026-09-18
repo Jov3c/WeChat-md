@@ -56,6 +56,81 @@ function cleanInternalAttributes(element: Element) {
   }
 }
 
+function flattenNestedLists(root: HTMLElement) {
+  const nestedLists = Array.from(root.querySelectorAll<HTMLElement>('li > ul, li > ol')).reverse()
+  nestedLists.forEach((nestedList) => {
+    const parentItem = nestedList.parentElement
+    const parentList = parentItem?.parentElement
+    if (!parentItem || !parentList || parentItem.tagName !== 'LI' || !['UL', 'OL'].includes(parentList.tagName)) return
+    const insertionPoint = parentItem.nextSibling
+    Array.from(nestedList.children).forEach((child) => {
+      if (child.tagName === 'LI') parentList.insertBefore(child, insertionPoint)
+    })
+    nestedList.remove()
+  })
+}
+
+function unwrapPreviewTableContainers(root: HTMLElement) {
+  Array.from(root.querySelectorAll<HTMLElement>('div')).forEach((container) => {
+    if (container.children.length !== 1 || container.firstElementChild?.tagName !== 'TABLE') return
+    container.replaceWith(container.firstElementChild)
+  })
+}
+
+function createClipboardBoundary() {
+  const boundary = document.createElement('p')
+  boundary.style.fontSize = '0'
+  boundary.style.lineHeight = '0'
+  boundary.style.margin = '0'
+  boundary.innerHTML = '&nbsp;'
+  return boundary
+}
+
+function textDirection(element: HTMLElement) {
+  let current: HTMLElement | null = element
+  while (current) {
+    const direction = (current.style.direction || current.getAttribute('dir') || '').toLowerCase()
+    if (direction === 'rtl' || direction === 'ltr') return direction
+    current = current.parentElement
+  }
+  return 'ltr'
+}
+
+function normalizeLogicalTextAlignment(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+    const alignment = element.style.textAlign.trim().toLowerCase()
+    if (alignment !== 'start' && alignment !== 'end') return
+    const isRtl = textDirection(element) === 'rtl'
+    const physicalAlignment = alignment === 'start'
+      ? (isRtl ? 'right' : 'left')
+      : (isRtl ? 'left' : 'right')
+    element.style.textAlign = physicalAlignment
+  })
+}
+
+function wrapDirectBlockTextForWechat(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('p,h1,h2,h3,h4,h5,h6,li,td,th,blockquote').forEach((block) => {
+    if (block.closest('pre,code')) return
+    Array.from(block.childNodes).forEach((node) => {
+      if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) return
+      const leaf = document.createElement('span')
+      leaf.setAttribute('leaf', '')
+      leaf.textContent = node.textContent
+      node.replaceWith(leaf)
+    })
+  })
+}
+
+function normalizeWechatClipboardStructure(root: HTMLElement) {
+  unwrapPreviewTableContainers(root)
+  flattenNestedLists(root)
+  normalizeLogicalTextAlignment(root)
+  wrapDirectBlockTextForWechat(root)
+  root.prepend(createClipboardBoundary())
+  root.append(createClipboardBoundary())
+  return root.innerHTML
+}
+
 export function serializePreviewArticle(article: HTMLElement) {
   const clone = article.cloneNode(true) as HTMLElement
   const sourceElements = [article, ...Array.from(article.querySelectorAll<HTMLElement>('*'))]
@@ -94,7 +169,7 @@ export function serializePreviewArticle(article: HTMLElement) {
     target.prepend(marker)
   })
 
-  return clone.outerHTML
+  return normalizeWechatClipboardStructure(clone)
 }
 
 export async function makeImageSourcesPortable(
@@ -149,7 +224,17 @@ export function preparePreviewArticleForClipboard(
   return prepareSerializedArticleForClipboard(serializePreviewArticle(article), resolveImageSource)
 }
 
-export async function copyPreparedArticle(html: string, plainText: string) {
+function renderedPlainText(html: string) {
+  const container = document.createElement('div')
+  container.innerHTML = html
+  return (container.innerText || container.textContent || '')
+    .replace(/\u00a0/g, '')
+    .trim()
+    .replace(/^([ \t]{0,3})(#{1,6}|[-+*>]|\d+[.)])(?=[ \t])/gm, '$1$2\u200b')
+    .replace(/^([ \t]*)(`{3,}|~{3,})/gm, '$1$2\u200b')
+}
+
+export async function copyPreparedArticle(html: string, _sourceMarkdown?: string) {
   const clipboard = navigator.clipboard
   if (!clipboard) throw new Error('当前环境不支持剪贴板')
 
@@ -159,7 +244,7 @@ export async function copyPreparedArticle(html: string, plainText: string) {
 
   await clipboard.write([new ClipboardItem({
     'text/html': new Blob([html], { type: 'text/html' }),
-    'text/plain': new Blob([plainText], { type: 'text/plain' }),
+    'text/plain': new Blob([renderedPlainText(html)], { type: 'text/plain' }),
   })])
 }
 

@@ -42,9 +42,8 @@ describe('application chrome', () => {
     expect(onCopy).toHaveBeenCalledOnce()
   })
 
-  it('separates article layouts from content templates', async () => {
-    const onLayoutSelect = vi.fn()
-    const onContentTemplateSelect = vi.fn()
+  it('offers one unified style menu without separate layout or template menus', async () => {
+    const onArticleStyleSelect = vi.fn()
     const user = userEvent.setup()
 
     render(
@@ -53,17 +52,14 @@ describe('application chrome', () => {
         onImport={() => undefined}
         onExtract={() => undefined}
         onCopy={() => undefined}
-        onLayoutSelect={onLayoutSelect}
-        onContentTemplateSelect={onContentTemplateSelect}
+        onArticleStyleSelect={onArticleStyleSelect}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '版式' }))
-    await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
-    expect(onLayoutSelect).toHaveBeenCalledWith('tutorial')
-
-    await user.click(screen.getByRole('button', { name: '模板' }))
-    await user.click(screen.getByRole('menuitem', { name: '教程指南' }))
-    expect(onContentTemplateSelect).toHaveBeenCalledWith('tutorial-guide')
+    expect(screen.queryByRole('button', { name: '版式' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '模板' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '教程 · 清晰' }))
+    expect(onArticleStyleSelect).toHaveBeenCalledWith('tutorial')
   })
 })

@@ -300,34 +300,35 @@ describe('WeChat MD application shell', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '新建文章' }))
+    await user.click(screen.getByRole('button', { name: '新建空白文章' }))
     await user.type(screen.getByRole('textbox', { name: 'Markdown 内容' }), '# 自动识别的标题\n\n正文')
 
     expect(screen.getByRole('button', { name: /^自动识别的标题，/ })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('applies a tutorial layout without changing the article content or article count', async () => {
+  it('applies a unified tutorial style without changing the article content or article count', async () => {
     const user = userEvent.setup()
     const { container } = render(<App />)
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
     const originalContent = editor.value
     const originalArticleCount = screen.getAllByRole('button', { name: /，/ }).length
 
-    await user.click(screen.getByRole('button', { name: '版式' }))
-    await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '教程 · 清晰' }))
 
     expect(editor.value).toBe(originalContent)
     expect(screen.getAllByRole('button', { name: /，/ })).toHaveLength(originalArticleCount)
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
   })
 
-  it('applies an information layout without creating another article', async () => {
+  it('applies an information style without creating another article', async () => {
     const user = userEvent.setup()
     const { container } = render(<App />)
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' }) as HTMLTextAreaElement
     const originalContent = editor.value
 
-    await user.click(screen.getByRole('button', { name: '版式' }))
-    await user.click(screen.getByRole('menuitem', { name: '资讯文章' }))
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '资讯 · 清爽' }))
 
     expect(editor.value).toBe(originalContent)
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'information')
@@ -339,22 +340,22 @@ describe('WeChat MD application shell', () => {
     const editor = screen.getByRole('textbox', { name: 'Markdown 内容' })
     fireEvent.change(editor, { target: { value: '# 我的固定结构\n\n## 第一部分' } })
 
-    await user.click(screen.getByRole('button', { name: '版式' }))
-    await user.click(screen.getByRole('menuitem', { name: '新闻报道' }))
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '新闻 · 严谨' }))
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '保存当前为模板' }))
     const dialog = within(screen.getByRole('dialog', { name: '保存为模板' }))
     await user.type(dialog.getByRole('textbox', { name: '模板名称' }), '我的长文模板')
     await user.click(dialog.getByRole('button', { name: '保存模板' }))
 
-    await user.click(screen.getByRole('button', { name: '版式' }))
-    await user.click(screen.getByRole('menuitem', { name: '教程文章' }))
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    await user.click(screen.getByRole('menuitem', { name: '教程 · 清晰' }))
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
 
     const articleCount = screen.getAllByRole('button', { name: /，/ }).length
-    await user.click(screen.getByRole('button', { name: '模板' }))
-    await user.click(screen.getByRole('menuitem', { name: '我的长文模板' }))
+    await user.click(screen.getByRole('button', { name: '新建文章' }))
+    await user.click(screen.getByRole('button', { name: '使用 我的长文模板' }))
     expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('# 我的固定结构\n\n## 第一部分')
     expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'news')
     expect(screen.getAllByRole('button', { name: /，/ })).toHaveLength(articleCount + 1)
@@ -363,13 +364,13 @@ describe('WeChat MD application shell', () => {
   it('renames and deletes a custom template from the template library', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '保存当前为模板' }))
     let dialog = within(screen.getByRole('dialog', { name: '保存为模板' }))
     await user.type(dialog.getByRole('textbox', { name: '模板名称' }), '待管理模板')
     await user.click(dialog.getByRole('button', { name: '保存模板' }))
 
-    await user.click(screen.getByRole('button', { name: '模板' }))
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '管理模板' }))
     await user.click(screen.getByRole('button', { name: '管理 待管理模板' }))
     await user.click(screen.getByRole('menuitem', { name: '重命名模板' }))
@@ -396,6 +397,7 @@ describe('WeChat MD application shell', () => {
     expect(screen.getByRole('dialog', { name: '未保存的风格修改' })).toBeVisible()
     expect(screen.queryByRole('button', { name: /^未命名文章，/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '放弃并继续' }))
+    await user.click(screen.getByRole('button', { name: '新建空白文章' }))
     expect(screen.getByRole('button', { name: /^未命名文章，/ })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -497,8 +499,8 @@ describe('WeChat MD application shell', () => {
 
     render(<App articleRepository={repository} saveDelay={0} />)
     await screen.findByRole('textbox', { name: 'Markdown 内容' })
-    await user.click(screen.getByRole('button', { name: '模板' }))
-    expect(screen.getByRole('menuitem', { name: '长期模板' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '新建文章' }))
+    expect(screen.getByRole('button', { name: '使用 长期模板' })).toBeVisible()
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('tab', { name: '组件' }))
     await user.click(screen.getByRole('button', { name: '我的' }))
@@ -613,6 +615,7 @@ describe('WeChat MD application shell', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '新建文章' }))
+    await user.click(screen.getByRole('button', { name: '新建空白文章' }))
 
     expect(screen.getByRole('textbox', { name: 'Markdown 内容' })).toHaveValue('')
     expect(screen.getByRole('button', { name: /^未命名文章，/ })).toBeVisible()
@@ -649,6 +652,17 @@ describe('WeChat MD application shell', () => {
     expect(Object.keys(item.data).sort()).toEqual(['text/html', 'text/plain'])
     expect(item.data['text/html'].type).toBe('text/html')
     expect(item.data['text/plain'].type).toBe('text/plain')
+    const copiedHtml = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.addEventListener('load', () => resolve(String(reader.result)))
+      reader.addEventListener('error', () => reject(reader.error))
+      reader.readAsText(item.data['text/html'])
+    })
+    const copiedContent = document.createElement('div')
+    copiedContent.innerHTML = copiedHtml
+    expect(copiedContent.querySelector('article')).toBeNull()
+    expect(copiedContent.firstElementChild?.tagName).toBe('P')
+    expect(copiedContent.lastElementChild?.tagName).toBe('P')
   })
 
   it('prevents copying an empty article', async () => {
@@ -657,6 +671,7 @@ describe('WeChat MD application shell', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, writeText: vi.fn() } })
     render(<App />)
     await user.click(screen.getByRole('button', { name: '新建文章' }))
+    await user.click(screen.getByRole('button', { name: '新建空白文章' }))
 
     await user.click(screen.getByRole('button', { name: '复制到公众号' }))
 
@@ -1193,12 +1208,17 @@ describe('WeChat MD application shell', () => {
     await user.click(screen.getByRole('button', { name: '更换风格' }))
     const library = within(screen.getByRole('region', { name: '风格库' }))
     expect(library.getByText('默认 · 简洁')).toBeVisible()
+    expect(library.getByText('教程 · 清晰')).toBeVisible()
+    expect(library.getByText('新闻 · 严谨')).toBeVisible()
+    expect(library.getByText('资讯 · 清爽')).toBeVisible()
+    expect(library.getByText('产品 · 醒目')).toBeVisible()
+    expect(library.getByText('墨色 · 长文')).toBeVisible()
     expect(library.getByText('已应用')).toBeVisible()
 
-    await user.click(library.getByRole('button', { name: '应用 暖色 · 阅读' }))
+    await user.click(library.getByRole('button', { name: '应用 教程 · 清晰' }))
 
-    expect(container.querySelector('article')).toHaveStyle({ '--article-background': '#fffaf2' })
-    expect(await screen.findByText('已应用“暖色 · 阅读”')).toBeVisible()
+    expect(container.querySelector('article')).toHaveAttribute('data-template-layout', 'tutorial')
+    expect(await screen.findByText('已应用“教程 · 清晰”')).toBeVisible()
   })
 
   it('opens the same style library from the toolbar style menu', async () => {
@@ -1373,7 +1393,11 @@ describe('WeChat MD application shell', () => {
     firstSession.unmount()
     const { container } = render(<App articleRepository={repository} saveDelay={0} />)
 
-    expect(await screen.findByText('持久化风格')).toBeVisible()
+    await waitFor(() => expect(container.querySelector('article')).toHaveStyle({ '--article-h1-size': '38px' }))
+    await user.click(screen.getByRole('button', { name: '风格' }))
+    expect(screen.getByRole('menuitem', { name: '✓ 持久化风格' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(screen.getByText('持久化风格')).toBeVisible()
     expect(container.querySelector('article')).toHaveStyle({ '--article-h1-size': '38px' })
   })
 

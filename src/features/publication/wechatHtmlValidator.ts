@@ -49,6 +49,40 @@ export function validateWechatHtml(html: string): WechatHtmlValidationIssue[] {
     })
   })
 
+  const root = documentNode.body.firstElementChild
+  if (documentNode.body.children.length === 1 && root?.matches('article, main')) {
+    add({
+      code: 'preview-root-wrapper',
+      level: 'error',
+      message: `最终 HTML 仍包含预览专用的 <${root.tagName.toLowerCase()}> 根容器`,
+      selector: root.tagName.toLowerCase(),
+      suggestion: '仅复制正文内部节点，不要把网页预览外壳一起粘贴到公众号。',
+    })
+  }
+
+  const tableWrapper = Array.from(documentNode.querySelectorAll('div')).find((element) => (
+    element.children.length === 1 && element.firstElementChild?.tagName === 'TABLE'
+  ))
+  if (tableWrapper) {
+    add({
+      code: 'preview-table-wrapper',
+      level: 'error',
+      message: '表格仍包含网页预览使用的外层容器',
+      selector: 'div > table',
+      suggestion: '移除表格外层容器，直接保留 table 结构。',
+    })
+  }
+
+  if (documentNode.querySelector('li > ul, li > ol')) {
+    add({
+      code: 'nested-list-structure',
+      level: 'error',
+      message: '文章包含公众号粘贴时容易被重写的嵌套列表',
+      selector: 'li > ul, li > ol',
+      suggestion: '将嵌套列表展开为同级条目后再复制。',
+    })
+  }
+
   documentNode.body.querySelectorAll('*').forEach((element) => {
     const eventAttribute = Array.from(element.attributes).find((attribute) => /^on/i.test(attribute.name))
     if (!eventAttribute) return
