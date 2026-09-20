@@ -301,7 +301,9 @@ describe('WeChat MD application shell', () => {
 
     await user.click(screen.getByRole('button', { name: '新建文章' }))
     await user.click(screen.getByRole('button', { name: '新建空白文章' }))
-    await user.type(screen.getByRole('textbox', { name: 'Markdown 内容' }), '# 自动识别的标题\n\n正文')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown 内容' }), {
+      target: { value: '# 自动识别的标题\n\n正文' },
+    })
 
     expect(screen.getByRole('button', { name: /^自动识别的标题，/ })).toHaveAttribute('aria-current', 'page')
   })
@@ -346,7 +348,9 @@ describe('WeChat MD application shell', () => {
     await user.click(screen.getByRole('button', { name: '更多操作' }))
     await user.click(screen.getByRole('menuitem', { name: '保存当前为模板' }))
     const dialog = within(screen.getByRole('dialog', { name: '保存为模板' }))
-    await user.type(dialog.getByRole('textbox', { name: '模板名称' }), '我的长文模板')
+    fireEvent.change(dialog.getByRole('textbox', { name: '模板名称' }), {
+      target: { value: '我的长文模板' },
+    })
     await user.click(dialog.getByRole('button', { name: '保存模板' }))
 
     await user.click(screen.getByRole('button', { name: '风格' }))
